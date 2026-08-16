@@ -1,3 +1,3 @@
-# Enterprise GraphRAG & AI Fleet Management Agent
+# Enterprise GraphRAG & Multi-Agent Swarm Engine
 
-An end-to-end Graph-based RAG system built with LangChain, Claude Code CLI, and Python.
+A modular, plug-and-play GraphRAG engine combining FastAPI, LangChain, and Knowledge Graphs for autonomous multi-agent reasoning.
