@@ -41,6 +41,27 @@ Stage directories are importable Python packages (`stages.extraction`, `stages.g
 
 Nothing is established yet, so prefer the defaults the stack implies: Pydantic v2 models for API and config schemas, `pydantic-settings` for env-backed config, async FastAPI handlers, and a `uvicorn` entrypoint. Keep new dependencies added to `requirements.txt` in the same unpinned style unless asked to pin.
 
+## Model Switching & Cost Optimization
+
+This project uses cost-optimized model switching to balance capability and expense across different task phases.
+
+**Default Model: Haiku**
+- Use Haiku for all standard work: file creation, routine editing, bug fixes, tests, Git commits, and documentation.
+- Haiku is fast and cost-effective for structural tasks and mechanical code generation.
+
+**Opus Escalation: When to Request**
+- Run `/model opus` **only** when starting:
+  - Complex multi-file architectural planning and design decisions.
+  - Heavy Cypher query optimization or graph traversal algorithms.
+  - Major structural redesigns affecting multiple stages or payloads.
+- Opus brings stronger reasoning for algorithmic depth and cross-system tradeoffs.
+
+**Transition Back: After Planning**
+- As soon as an architectural plan is finalized and ready for implementation, run `/model haiku` to return to cost-effective mode.
+- Write all implementation files (schemas, modules, tests) under Haiku; it excels at code generation once the design is locked.
+
+This discipline keeps token cost linear in project scope rather than quadratic in iteration.
+
 ## Git
 
 Default branch is `master`. Never commit `.env`.
