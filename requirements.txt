@@ -1,6 +1,11 @@
 langchain
 langchain-community
+langchain-anthropic
+langchain-openai
+neo4j
 fastapi
 uvicorn
 pydantic
+pydantic-settings
 python-dotenv
+docker
