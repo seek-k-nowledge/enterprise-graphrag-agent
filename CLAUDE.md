@@ -9,14 +9,14 @@ Enterprise GraphRAG & Multi-Agent Swarm Engine — a modular GraphRAG engine com
 Read **`CONTEXT.md`** first — it defines the four pipeline stages, what each one owns, and the payload contracts between them. Code belongs in the stage that owns that responsibility:
 
 ```
-stages/01_extraction/        parse · chunk · LLM entity/relation extraction (no DB access)
-stages/02_graph_indexing/    entity resolution · idempotent Neo4j upserts · vector index (only writer)
-stages/03_reasoning_agent/   query router · graph+vector retrieval · LangGraph agent swarm (read-only)
-stages/04_fastapi_service/   HTTP surface · async jobs · streaming (no reasoning, no Cypher)
+stages/extraction/        parse · chunk · LLM entity/relation extraction (no DB access)
+stages/graph_indexing/    entity resolution · idempotent Neo4j upserts · vector index (only writer)
+stages/reasoning_agent/   query router · graph+vector retrieval · LangGraph agent swarm (read-only)
+stages/fastapi_service/   HTTP surface · async jobs · streaming (no reasoning, no Cypher)
 _config/                     graph schema · model selection · prompts · retrieval params
 ```
 
-Directories currently hold only `.gitkeep` files (empty dirs aren't tracked by git). They are not yet Python packages — adding `__init__.py` is a decision for whoever writes the first module, and note the leading digits mean `stages.01_extraction` is not a legal import path, so plan on a loader, `importlib`, or a rename if these need to be imported rather than run as scripts.
+Stage directories are importable Python packages (`stages.extraction`, `stages.graph_indexing`, …). They were originally numbered (`01_extraction`) and renamed once the first real module landed, since a leading digit is not a legal identifier — keep them that way, and put ordering in docs rather than in directory names.
 
 ## Environment
 

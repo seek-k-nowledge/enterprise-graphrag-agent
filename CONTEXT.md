@@ -2,7 +2,7 @@
 
 This document is the architectural contract for the Enterprise GraphRAG & Multi-Agent Swarm Engine. It describes the four pipeline stages, the boundary each one owns, and how a request is routed across them.
 
-Stages live in `stages/`, numbered in execution order. Shared configuration lives in `_config/`. Every stage is intended to be independently runnable and independently testable — a stage communicates with its neighbors through a declared payload, never by reaching into another stage's internals.
+Stages live in `stages/`, in execution order (Stage 01 → 04 below). Shared configuration lives in `_config/`. Every stage is intended to be independently runnable and independently testable — a stage communicates with its neighbors through a declared payload, never by reaching into another stage's internals.
 
 > Status: scaffolding. The directories and contracts below are established; the implementations are not yet written. Treat the payload shapes as the intended design, not as code that exists.
 
@@ -12,28 +12,28 @@ Stages live in `stages/`, numbered in execution order. Shared configuration live
 
 ```
                             ┌─────────────────────────────┐
-   source documents ───────▶│ 01_extraction               │
+   source documents ───────▶│ extraction                  │
                             │ parse · chunk · extract     │
                             │ entities & relations        │
                             └──────────────┬──────────────┘
                                            │ ExtractionResult
                                            ▼
                             ┌─────────────────────────────┐
-                            │ 02_graph_indexing           │
+                            │ graph_indexing              │
                             │ resolve entities · upsert   │
                             │ nodes/edges · embed chunks  │
                             └──────────────┬──────────────┘
                                            │ Neo4j graph + vector index
                                            ▼
    user query ─────────────▶┌─────────────────────────────┐
-                            │ 03_reasoning_agent          │
+                            │ reasoning_agent             │
                             │ route · retrieve (graph +   │
                             │ vector) · multi-agent swarm │
                             └──────────────┬──────────────┘
                                            │ AnswerPayload
                                            ▼
                             ┌─────────────────────────────┐
-                            │ 04_fastapi_service          │
+                            │ fastapi_service             │
                             │ HTTP surface · auth · async │
                             │ jobs · streaming responses  │
                             └─────────────────────────────┘
@@ -43,7 +43,7 @@ There are two entry paths through the system. **Ingestion** flows `01 → 02` an
 
 ---
 
-## Stage 01 — `stages/01_extraction/`
+## Stage 01 — `stages/extraction/`
 
 **Owns:** turning unstructured source material into a typed, chunk-attributed set of candidate entities and relations.
 
@@ -59,7 +59,7 @@ Responsibilities:
 
 ---
 
-## Stage 02 — `stages/02_graph_indexing/`
+## Stage 02 — `stages/graph_indexing/`
 
 **Owns:** the knowledge graph and its indexes. This is the only stage that writes to Neo4j.
 
@@ -76,7 +76,7 @@ Responsibilities:
 
 ---
 
-## Stage 03 — `stages/03_reasoning_agent/`
+## Stage 03 — `stages/reasoning_agent/`
 
 **Owns:** the router, retrieval strategy, and the multi-agent swarm. This is the stage the project's name is really about.
 
@@ -92,7 +92,7 @@ Responsibilities:
 
 ---
 
-## Stage 04 — `stages/04_fastapi_service/`
+## Stage 04 — `stages/fastapi_service/`
 
 **Owns:** the HTTP surface and everything operational around it.
 
