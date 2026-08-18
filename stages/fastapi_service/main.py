@@ -241,7 +241,6 @@ def create_app() -> FastAPI:
             job = JobStatus(
                 job_id=job_id,
                 status="queued",
-                created_at=None,  # Will be set by model default
             )
 
             # Store job in queue

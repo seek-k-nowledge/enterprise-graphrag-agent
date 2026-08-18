@@ -181,7 +181,9 @@ class JobStatus(BaseModel):
         default=None, description="Job result (when completed)"
     )
     error: Optional[str] = Field(default=None, description="Error message if failed")
-    created_at: datetime = Field(..., description="Job creation timestamp")
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, description="Job creation timestamp"
+    )
     started_at: Optional[datetime] = Field(
         default=None, description="When job started processing"
     )
