@@ -314,6 +314,9 @@ class AgentState(BaseModel):
     errors: list[dict] = Field(
         default_factory=list, description="Non-fatal errors during processing"
     )
+    final_answer: Optional['AnswerPayload'] = Field(
+        default=None, description="Final constructed answer (set by return node)"
+    )
 
     # Metadata for timing
     started_at: datetime = Field(default_factory=datetime.utcnow)
