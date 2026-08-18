@@ -148,8 +148,6 @@ class AgentGraph:
         # Create initial state
         state = AgentState(
             query=query_payload,
-            checkpoint_id=session_id,
-            started_at=datetime.utcnow(),
         )
 
         try:

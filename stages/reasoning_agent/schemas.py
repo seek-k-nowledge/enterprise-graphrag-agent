@@ -315,8 +315,7 @@ class AgentState(BaseModel):
         default_factory=list, description="Non-fatal errors during processing"
     )
 
-    # Metadata for checkpoint/resumption
-    checkpoint_id: Optional[str] = Field(default=None)
+    # Metadata for timing
     started_at: datetime = Field(default_factory=datetime.utcnow)
 
 
