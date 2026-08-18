@@ -307,7 +307,7 @@ class AgentGraph:
 
         # Adjust for verification
         if state.verification_feedback:
-            confidence += state.verification_feedback.confidence_adjustment
+            confidence += state.verification_feedback.get("confidence_adjustment", 0.0)
             confidence = max(0.0, min(1.0, confidence))  # Clamp to [0, 1]
 
         # Build retrieval trace
@@ -335,7 +335,7 @@ class AgentGraph:
             user_id=state.query.user_id,
             session_id=state.query.session_id,
             gaps=(
-                state.verification_feedback.gaps
+                state.verification_feedback.get("gaps", [])
                 if state.verification_feedback
                 else []
             ),
