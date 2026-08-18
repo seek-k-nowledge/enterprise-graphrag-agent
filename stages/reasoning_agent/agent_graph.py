@@ -273,7 +273,7 @@ class AgentGraph:
                 state.retrieval_results.merged_subgraph if state.retrieval_results else None,
             )
 
-            state.verification_feedback = verification_output
+            state.verification_feedback = verification_output.model_dump()
             state.reasoning_steps.append(step)
 
             return state
