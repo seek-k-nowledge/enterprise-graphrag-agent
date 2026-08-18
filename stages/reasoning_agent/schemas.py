@@ -127,7 +127,7 @@ class RetrievalStrategyResult(BaseModel):
     """Result from one retrieval strategy."""
 
     strategy: str = Field(
-        ..., description="Strategy name (graph_traversal, vector_search, cypher_direct)"
+        default="unknown", description="Strategy name (graph_traversal, vector_search, cypher_direct)"
     )
     subgraph: Subgraph = Field(default_factory=Subgraph, description="Retrieved subgraph")
     rank: int = Field(default=0, description="Ranking among strategies (0=best)")
@@ -141,7 +141,7 @@ class RetrievalStrategyResult(BaseModel):
 class RetrievalResult(BaseModel):
     """Results from all retrieval strategies, ranked."""
 
-    query: str = Field(..., description="The original query")
+    query: str = Field(default="", description="The original query")
     strategies_executed: list[str] = Field(
         default_factory=list, description="Strategies that were run"
     )
@@ -204,9 +204,9 @@ class ReasoningStep(BaseModel):
     """One step in the agent reasoning process."""
 
     step_type: str = Field(
-        ..., description="Step type: query_classification, retrieval, synthesis, verification"
+        default="unknown", description="Step type: query_classification, retrieval, synthesis, verification"
     )
-    agent: str = Field(..., description="Agent name (router, retrieval, etc.)")
+    agent: str = Field(default="unknown", description="Agent name (router, retrieval, etc.)")
     input: dict = Field(default_factory=dict, description="Input to this step")
     output: dict = Field(default_factory=dict, description="Output from this step")
     reasoning: str = Field(default="", description="Why this decision was made")
@@ -217,7 +217,7 @@ class RetrievalTrace(BaseModel):
     """Full audit trail of retrieval and reasoning."""
 
     query_classification: str = Field(
-        ...,
+        default="unknown",
         description="Query type: multi_hop, semantic, aggregate, hybrid",
     )
     retrieval_strategies: list[str] = Field(
@@ -249,8 +249,8 @@ class RetrievalTrace(BaseModel):
 class AnswerPayload(BaseModel):
     """Grounded answer with full provenance."""
 
-    query: str = Field(..., description="The original user query")
-    answer_text: str = Field(..., description="The synthesized answer")
+    query: str = Field(default="", description="The original user query")
+    answer_text: str = Field(default="", description="The synthesized answer")
     citations: list[Citation] = Field(
         default_factory=list, description="Citation for each claim"
     )
@@ -322,8 +322,10 @@ class AgentState(BaseModel):
 class RouterDecision(BaseModel):
     """Decision from the query router agent."""
 
-    query_classification: str = Field(...)
-    strategies: list[str] = Field(description="Ordered list of strategies to execute")
+    query_classification: str = Field(default="unknown", description="Query classification")
+    strategies: list[str] = Field(
+        default_factory=list, description="Ordered list of strategies to execute"
+    )
     seed_entities: list[str] = Field(
         default_factory=list, description="Named entities extracted from query"
     )
@@ -336,7 +338,7 @@ class RouterDecision(BaseModel):
 class SynthesisOutput(BaseModel):
     """Output from the synthesis agent."""
 
-    answer_text: str = Field(...)
+    answer_text: str = Field(default="", description="Synthesized answer text")
     citations: list[Citation] = Field(default_factory=list)
     cited_entities: list[str] = Field(default_factory=list)
     cited_relations: list[str] = Field(default_factory=list)

@@ -52,7 +52,7 @@ class TokenUsageModel(BaseModel):
 class RetrievalTraceModel(BaseModel):
     """Audit trail of retrieval and reasoning."""
 
-    query_classification: str = Field(...)
+    query_classification: str = Field(default="unknown", description="Query classification type")
     retrieval_strategies: list[str] = Field(default_factory=list)
     subgraph_stats: dict = Field(
         default_factory=dict,
@@ -65,7 +65,7 @@ class RetrievalTraceModel(BaseModel):
 class QueryResponse(BaseModel):
     """Complete query response with answer and citations."""
 
-    answer: str = Field(..., description="The synthesized answer")
+    answer: str = Field(default="", description="The synthesized answer")
     citations: list[CitationModel] = Field(
         default_factory=list, description="Citations for each claim"
     )
@@ -73,13 +73,13 @@ class QueryResponse(BaseModel):
         default=None, description="Audit trail (optional, use ?trace=true)"
     )
     confidence: float = Field(
-        ge=0.0, le=1.0, description="Overall answer confidence"
+        default=0.5, ge=0.0, le=1.0, description="Overall answer confidence"
     )
     token_usage: TokenUsageModel = Field(
         default_factory=TokenUsageModel, description="Token usage"
     )
-    latency_ms: int = Field(ge=0, description="End-to-end latency in milliseconds")
-    request_id: str = Field(..., description="Unique request identifier")
+    latency_ms: int = Field(default=0, ge=0, description="End-to-end latency in milliseconds")
+    request_id: str = Field(default="", description="Unique request identifier")
     gaps: list[str] = Field(
         default_factory=list, description="Known gaps or limitations"
     )
@@ -94,7 +94,7 @@ class StreamingEvent(BaseModel):
     """A single event in a streaming response."""
 
     type: str = Field(
-        ...,
+        default="unknown",
         description="Event type: reasoning_step, retrieval, synthesis, verification, complete, error",
     )
     data: dict = Field(default_factory=dict, description="Event-specific data")
@@ -215,8 +215,8 @@ class HealthResponse(BaseModel):
 class StageStatus(BaseModel):
     """Status of a single pipeline stage."""
 
-    name: str = Field(...)
-    status: str = Field(..., description="ok, degraded, or unavailable")
+    name: str = Field(default="", description="Stage name")
+    status: str = Field(default="unknown", description="ok, degraded, or unavailable")
     details: Optional[str] = Field(default=None)
 
 
