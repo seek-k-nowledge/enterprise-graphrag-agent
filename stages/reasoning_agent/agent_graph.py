@@ -241,14 +241,27 @@ class AgentGraph:
         """Synthesize node: ground answer with citations."""
         logger.info("Node: synthesize")
         try:
-            if not state.retrieval_results or not state.retrieval_results.merged_subgraph.entities:
+            retrieval_results = getattr(state, 'retrieval_results', None) if not isinstance(state, dict) else state.get('retrieval_results')
+
+            if not retrieval_results:
                 state.draft_answer = "No information found for your query."
                 state.citations = []
                 return state
 
+            # Handle both object and dict access
+            merged_subgraph = getattr(retrieval_results, 'merged_subgraph', None) if not isinstance(retrieval_results, dict) else retrieval_results.get('merged_subgraph')
+            entities = getattr(merged_subgraph, 'entities', {}) if merged_subgraph and not isinstance(merged_subgraph, dict) else (merged_subgraph.get('entities', {}) if merged_subgraph else {})
+
+            if not entities:
+                state.draft_answer = "No information found for your query."
+                state.citations = []
+                return state
+
+            query_text = getattr(state.query, 'text', '') if hasattr(state, 'query') and not isinstance(state.query, dict) else (state.get('query', {}).get('text', '') if isinstance(state, dict) else state.query.get('text', ''))
+
             synthesis_output, step = self.synthesis_agent.synthesize(
-                state.query.text,
-                state.retrieval_results.merged_subgraph,
+                query_text,
+                merged_subgraph,
             )
 
             state.draft_answer = synthesis_output.answer_text
@@ -264,13 +277,21 @@ class AgentGraph:
         """Verify node: check consistency and citations."""
         logger.info("Node: verify")
         try:
-            if not state.draft_answer:
+            draft_answer = getattr(state, 'draft_answer', None) if not isinstance(state, dict) else state.get('draft_answer')
+            if not draft_answer:
                 return state
 
+            citations = getattr(state, 'citations', []) if not isinstance(state, dict) else state.get('citations', [])
+            retrieval_results = getattr(state, 'retrieval_results', None) if not isinstance(state, dict) else state.get('retrieval_results')
+
+            merged_subgraph = None
+            if retrieval_results:
+                merged_subgraph = getattr(retrieval_results, 'merged_subgraph', None) if not isinstance(retrieval_results, dict) else retrieval_results.get('merged_subgraph')
+
             verification_output, step = self.verification_agent.verify(
-                state.draft_answer,
-                state.citations,
-                state.retrieval_results.merged_subgraph if state.retrieval_results else None,
+                draft_answer,
+                citations,
+                merged_subgraph,
             )
 
             state.verification_feedback = verification_output.model_dump()
@@ -298,52 +319,72 @@ class AgentGraph:
 
     def _construct_answer(self, state: AgentState) -> AnswerPayload:
         """Construct final AnswerPayload from agent state."""
+        # Helper to safely access state (handle both dict and object)
+        def get_state_value(obj, key, default=None):
+            if isinstance(obj, dict):
+                return obj.get(key, default)
+            return getattr(obj, key, default)
+
         # Calculate confidence
         confidence = 0.5
-        if state.retrieval_results:
+        retrieval_results = get_state_value(state, "retrieval_results")
+        if retrieval_results:
             # Base confidence from retrieval
-            if state.retrieval_results.strategy_results:
-                confidence = state.retrieval_results.strategy_results[0].confidence
+            strategy_results = get_state_value(retrieval_results, "strategy_results", [])
+            if strategy_results:
+                confidence = strategy_results[0].confidence if hasattr(strategy_results[0], 'confidence') else strategy_results[0].get('confidence', 0.5)
 
         # Adjust for verification
-        if state.verification_feedback:
-            confidence += state.verification_feedback.get("confidence_adjustment", 0.0)
+        verification_feedback = get_state_value(state, "verification_feedback")
+        if verification_feedback:
+            if isinstance(verification_feedback, dict):
+                confidence += verification_feedback.get("confidence_adjustment", 0.0)
+            else:
+                confidence += getattr(verification_feedback, "confidence_adjustment", 0.0)
             confidence = max(0.0, min(1.0, confidence))  # Clamp to [0, 1]
 
         # Build retrieval trace
         trace = None
-        if state.retrieval_results:
+        if retrieval_results:
+            reasoning_steps = get_state_value(state, "reasoning_steps", [])
+            errors = get_state_value(state, "errors", [])
+            query_classification = get_state_value(state, "query_classification", "unknown")
+
             trace = {
-                "query_classification": state.query_classification,
-                "retrieval_strategies": state.retrieval_results.strategies_executed,
+                "query_classification": query_classification,
+                "retrieval_strategies": get_state_value(retrieval_results, "strategies_executed", []),
                 "subgraph_stats": {
-                    "nodes_touched": state.retrieval_results.total_entities,
-                    "edges_touched": state.retrieval_results.total_relations,
-                    "chunks_used": state.retrieval_results.total_chunks,
+                    "nodes_touched": get_state_value(retrieval_results, "total_entities", 0),
+                    "edges_touched": get_state_value(retrieval_results, "total_relations", 0),
+                    "chunks_used": get_state_value(retrieval_results, "total_chunks", 0),
                 },
-                "reasoning_steps": [s.dict() for s in state.reasoning_steps],
-                "errors": state.errors,
+                "reasoning_steps": [s.model_dump() if hasattr(s, 'model_dump') else s for s in reasoning_steps],
+                "errors": errors,
             }
 
         # Construct answer payload
+        query_payload = get_state_value(state, "query")
+        query_text = query_payload.text if hasattr(query_payload, 'text') else query_payload.get('text', '') if isinstance(query_payload, dict) else ''
+
         answer = AnswerPayload(
-            query=state.query.text,
-            answer_text=state.draft_answer or "No answer generated.",
-            citations=state.citations,
+            query=query_text,
+            answer_text=get_state_value(state, "draft_answer") or "No answer generated.",
+            citations=get_state_value(state, "citations", []),
             confidence=confidence,
-            token_usage=state.token_usage,
-            user_id=state.query.user_id,
-            session_id=state.query.session_id,
+            token_usage=get_state_value(state, "token_usage"),
+            user_id=query_payload.user_id if hasattr(query_payload, 'user_id') else query_payload.get('user_id') if isinstance(query_payload, dict) else None,
+            session_id=query_payload.session_id if hasattr(query_payload, 'session_id') else query_payload.get('session_id') if isinstance(query_payload, dict) else None,
             gaps=(
-                state.verification_feedback.get("gaps", [])
-                if state.verification_feedback
-                else []
-            ),
+                verification_feedback.get("gaps", [])
+                if isinstance(verification_feedback, dict)
+                else getattr(verification_feedback, "gaps", [])
+            ) if verification_feedback else [],
         )
 
         # Calculate latency
-        if state.started_at:
-            latency = (datetime.utcnow() - state.started_at).total_seconds() * 1000
+        started_at = get_state_value(state, "started_at")
+        if started_at:
+            latency = (datetime.utcnow() - started_at).total_seconds() * 1000
             answer.latency_ms = int(latency)
 
         return answer
