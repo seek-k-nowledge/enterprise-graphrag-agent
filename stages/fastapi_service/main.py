@@ -9,10 +9,14 @@ import uuid
 from typing import Optional
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 from .schemas import (
     QueryRequest,

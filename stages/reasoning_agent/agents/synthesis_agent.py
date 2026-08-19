@@ -19,26 +19,26 @@ class SynthesisAgent:
     Uses an LLM to write answers that cite specific nodes, edges, and chunks.
     """
 
-    def __init__(self, model: str = "claude-sonnet-5"):
+    def __init__(self, model: str = "llama-3.3-70b-versatile"):
         """
         Initialize synthesis agent.
 
         Args:
-            model: Claude model ID for answer generation
+            model: Groq model ID for answer generation (default: llama-3.3-70b-versatile)
         """
         self.model = model
         self.client = None
         self._initialize_client()
 
     def _initialize_client(self) -> None:
-        """Initialize Anthropic client."""
+        """Initialize Groq client."""
         try:
-            from anthropic import Anthropic
+            from groq import Groq
 
-            self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-            logger.info(f"Initialized Anthropic client for {self.model}")
+            self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+            logger.info(f"Initialized Groq client for {self.model}")
         except Exception as e:
-            logger.warning(f"Failed to initialize Anthropic client: {e}")
+            logger.warning(f"Failed to initialize Groq client: {e}")
 
     def synthesize(
         self,

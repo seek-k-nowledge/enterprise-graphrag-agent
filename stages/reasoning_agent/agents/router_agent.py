@@ -21,14 +21,14 @@ class RouterAgent:
 
     def __init__(
         self,
-        model: str = "claude-sonnet-5",
+        model: str = "llama-3.3-70b-versatile",
         available_strategies: list[str] = None,
     ):
         """
         Initialize router agent.
 
         Args:
-            model: Claude model ID for routing
+            model: Groq model ID for routing (default: llama-3.3-70b-versatile)
             available_strategies: List of available retrieval strategies
         """
         self.model = model
@@ -41,14 +41,14 @@ class RouterAgent:
         self._initialize_client()
 
     def _initialize_client(self) -> None:
-        """Initialize Anthropic client."""
+        """Initialize Groq client."""
         try:
-            from anthropic import Anthropic
+            from groq import Groq
 
-            self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-            logger.info(f"Initialized Anthropic client for {self.model}")
+            self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+            logger.info(f"Initialized Groq client for {self.model}")
         except Exception as e:
-            logger.warning(f"Failed to initialize Anthropic client: {e}")
+            logger.warning(f"Failed to initialize Groq client: {e}")
 
     def route(self, query: str) -> tuple[RouterDecision, ReasoningStep]:
         """

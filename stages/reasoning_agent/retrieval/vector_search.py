@@ -51,27 +51,14 @@ class VectorSearchRetriever(BaseRetriever):
         self._initialize_embeddings()
 
     def _initialize_embeddings(self) -> None:
-        """Initialize the embedding model."""
+        """Initialize the embedding model using HuggingFace."""
         try:
-            if self.embedding_provider.lower() == "openai":
-                from langchain_openai import OpenAIEmbeddings
+            from langchain_community.embeddings import HuggingFaceEmbeddings
 
-                self.embeddings = OpenAIEmbeddings(
-                    model=self.embedding_model,
-                    api_key=os.getenv("OPENAI_API_KEY"),
-                )
-            elif self.embedding_provider.lower() == "anthropic":
-                from langchain_anthropic import AnthropicEmbeddings
-
-                self.embeddings = AnthropicEmbeddings(
-                    model=self.embedding_model,
-                    api_key=os.getenv("ANTHROPIC_API_KEY"),
-                )
-            else:
-                raise ValueError(
-                    f"Unknown embedding provider: {self.embedding_provider}"
-                )
-            logger.info(f"Initialized {self.embedding_provider} embeddings")
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            )
+            logger.info(f"Initialized HuggingFace embeddings: sentence-transformers/all-MiniLM-L6-v2")
         except Exception as e:
             logger.warning(f"Failed to initialize embeddings: {e}")
 

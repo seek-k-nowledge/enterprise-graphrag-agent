@@ -23,26 +23,26 @@ class VerificationAgent:
     - Identifies gaps or limitations
     """
 
-    def __init__(self, model: str = "claude-sonnet-5"):
+    def __init__(self, model: str = "llama-3.3-70b-versatile"):
         """
         Initialize verification agent.
 
         Args:
-            model: Claude model ID for verification
+            model: Groq model ID for verification (default: llama-3.3-70b-versatile)
         """
         self.model = model
         self.client = None
         self._initialize_client()
 
     def _initialize_client(self) -> None:
-        """Initialize Anthropic client."""
+        """Initialize Groq client."""
         try:
-            from anthropic import Anthropic
+            from groq import Groq
 
-            self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-            logger.info(f"Initialized Anthropic client for {self.model}")
+            self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+            logger.info(f"Initialized Groq client for {self.model}")
         except Exception as e:
-            logger.warning(f"Failed to initialize Anthropic client: {e}")
+            logger.warning(f"Failed to initialize Groq client: {e}")
 
     def verify(
         self,

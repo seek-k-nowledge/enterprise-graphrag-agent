@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 import unicodedata
 from datetime import datetime, timezone
@@ -56,8 +57,9 @@ __all__ = [
 # Default tiering, per the model-selection section of CONTEXT.md: cheap model
 # for the corpus body, stronger model for documents flagged hard. Both are
 # overridable here and belong in _config/ once that exists.
-DEFAULT_MODEL = "claude-haiku-4-5"
-ESCALATION_MODEL = "claude-opus-5"
+# Using Groq models for cost-effectiveness
+DEFAULT_MODEL = "llama-3.3-70b-versatile"
+ESCALATION_MODEL = "llama-3.3-70b-versatile"
 
 SYSTEM_PROMPT = """\
 You extract a knowledge graph from text. You will be given one passage from a \
@@ -199,11 +201,21 @@ def build_extractor(config: ExtractionConfig) -> Runnable:
     The model is instantiated lazily by the caller's first invocation, so
     building a chain does not require credentials.
     """
-    model: BaseChatModel = init_chat_model(
-        config.model,
-        model_provider=config.model_provider,
-        temperature=config.temperature,
-    )
+    try:
+        from langchain_groq import ChatGroq
+
+        model: BaseChatModel = ChatGroq(
+            model_name=config.model,
+            temperature=config.temperature,
+            api_key=os.getenv("GROQ_API_KEY"),
+        )
+    except ImportError:
+        # Fallback to init_chat_model
+        model: BaseChatModel = init_chat_model(
+            config.model,
+            model_provider=config.model_provider or "groq",
+            temperature=config.temperature,
+        )
     prompt = ChatPromptTemplate.from_messages(
         [("system", SYSTEM_PROMPT), ("human", USER_PROMPT)]
     ).partial(

@@ -63,33 +63,18 @@ class ChunkEmbedder:
         self._initialize_embeddings()
 
     def _initialize_embeddings(self) -> None:
-        """Initialize the embedding model via LangChain."""
+        """Initialize the embedding model via LangChain (HuggingFace)."""
         try:
-            if self.provider.lower() == "openai":
-                from langchain_openai import OpenAIEmbeddings
+            from langchain_community.embeddings import HuggingFaceEmbeddings
 
-                self.embeddings = OpenAIEmbeddings(
-                    model=self.model,
-                    api_key=os.getenv("OPENAI_API_KEY"),
-                )
-                logger.info(f"Initialized OpenAI embeddings: {self.model}")
+            # Use HuggingFace embeddings (ignoring provider and model parameters)
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            )
+            logger.info(f"Initialized HuggingFace embeddings: sentence-transformers/all-MiniLM-L6-v2")
 
-            elif self.provider.lower() == "anthropic":
-                from langchain_anthropic import AnthropicEmbeddings
-
-                self.embeddings = AnthropicEmbeddings(
-                    model=self.model,
-                    api_key=os.getenv("ANTHROPIC_API_KEY"),
-                )
-                logger.info(f"Initialized Anthropic embeddings: {self.model}")
-
-            else:
-                raise ValueError(
-                    f"Unknown embedding provider: {self.provider}. "
-                    f"Expected 'openai' or 'anthropic'"
-                )
         except ImportError as e:
-            logger.error(f"Failed to import embedding provider: {e}")
+            logger.error(f"Failed to import HuggingFace embeddings: {e}")
             raise
         except Exception as e:
             logger.error(f"Failed to initialize embeddings: {e}")
