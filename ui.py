@@ -64,7 +64,7 @@ with tab2:
                     "MATCH (n)-[r]->(m) RETURN coalesce(n.name, n.id, labels(n)[0]) AS source, type(r) AS rel, coalesce(m.name, m.id, labels(m)[0]) AS target LIMIT $limit",
                     limit=graph_limit
                 )
-                records = result.records()
+                records = list(result)
 
                 if not records:
                     st.info("📊 No graph data available. Ingest documents to populate the graph.")
