@@ -28,8 +28,8 @@ class VectorSearchRetriever(BaseRetriever):
     def __init__(
         self,
         graph_accessor: GraphAccessor,
-        embedding_model: str = "text-embedding-3-large",
-        embedding_provider: str = "openai",
+        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+        embedding_provider: str = "huggingface",
         top_k: int = 10,
         timeout_sec: int = 30,
     ):
@@ -38,8 +38,8 @@ class VectorSearchRetriever(BaseRetriever):
 
         Args:
             graph_accessor: GraphAccessor instance
-            embedding_model: Model ID for embedding
-            embedding_provider: Provider (openai or anthropic)
+            embedding_model: Model ID for embedding (currently using HuggingFace)
+            embedding_provider: Provider (currently "huggingface")
             top_k: Top-K chunks to retrieve
             timeout_sec: Query timeout in seconds
         """

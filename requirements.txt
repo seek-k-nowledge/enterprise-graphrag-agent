@@ -1,5 +1,6 @@
 langchain
 langchain-community
+langchain-groq
 langchain-anthropic
 langchain-openai
 neo4j

@@ -329,6 +329,79 @@ def create_app() -> FastAPI:
         )
 
     # ─────────────────────────────────────────────────────────────────────────
+    # Graph Endpoint (for visualization)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @app.get("/api/v1/graph")
+    async def get_graph(limit: int = 50):
+        """Fetch graph data for visualization.
+
+        Returns nodes and edges as JSON for client-side rendering.
+        """
+        if not app_state["neo4j_client"]:
+            return {"nodes": [], "edges": [], "error": "Neo4j unavailable"}
+
+        try:
+            cypher = """
+            MATCH (n)-[r]->(m)
+            RETURN
+                coalesce(n.name, n.id, labels(n)[0]) AS source_name,
+                labels(n)[0] AS source_type,
+                type(r) AS rel_type,
+                coalesce(m.name, m.id, labels(m)[0]) AS target_name,
+                labels(m)[0] AS target_type
+            LIMIT $limit
+            """
+
+            result = app_state["neo4j_client"].query(
+                cypher,
+                parameters={"limit": limit},
+                read_only=True
+            )
+
+            # Build nodes and edges
+            nodes = {}
+            edges = []
+
+            for record in result.records:
+                src = record.get("source_name", "")
+                src_type = record.get("source_type", "Node")
+                tgt = record.get("target_name", "")
+                tgt_type = record.get("target_type", "Node")
+                rel = record.get("rel_type", "")
+
+                # Add nodes
+                if src and src not in nodes:
+                    nodes[src] = {"id": src, "label": src, "type": src_type}
+                if tgt and tgt not in nodes:
+                    nodes[tgt] = {"id": tgt, "label": tgt, "type": tgt_type}
+
+                # Add edge
+                if src and tgt and rel:
+                    edges.append({
+                        "source": src,
+                        "target": tgt,
+                        "label": rel,
+                        "type": rel
+                    })
+
+            logger.info(f"Graph endpoint: {len(nodes)} nodes, {len(edges)} edges")
+
+            return {
+                "nodes": list(nodes.values()),
+                "edges": edges,
+                "count": {"nodes": len(nodes), "edges": len(edges)}
+            }
+
+        except Exception as e:
+            logger.error(f"Graph fetch error: {e}")
+            return {
+                "nodes": [],
+                "edges": [],
+                "error": str(e)
+            }
+
+    # ─────────────────────────────────────────────────────────────────────────
     # Error Handler
     # ─────────────────────────────────────────────────────────────────────────
 

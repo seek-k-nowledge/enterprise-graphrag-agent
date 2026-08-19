@@ -1,16 +1,16 @@
 """
 Chunk embedding and vector index management for Stage 2.
 
-Embeds chunk text using a configured provider (Anthropic or OpenAI) and stores
-vectors in Neo4j for semantic search. Supports batching, retry, and error handling.
+Embeds chunk text using HuggingFace sentence transformers and stores vectors in Neo4j
+for semantic search. Supports batching, retry, and error handling.
 
 Usage:
     embedder = ChunkEmbedder(
         neo4j_client=client,
         model="text-embedding-3-large",
-        provider="openai",
+        provider="huggingface",
         batch_size=100,
-        dimensions=1536
+        dimensions=384
     )
     result = embedder.embed_chunks(chunks)
 """
@@ -29,17 +29,17 @@ class ChunkEmbedder:
     """
     Embeds chunk text and stores vectors in Neo4j.
 
-    Supports Anthropic and OpenAI embedding models via LangChain.
+    Uses HuggingFace sentence transformers for deterministic embeddings.
     All embeddings are deterministic given the same model and input.
     """
 
     def __init__(
         self,
         neo4j_client: Neo4jClient,
-        model: str = "text-embedding-3-large",
-        provider: str = "openai",
+        model: str = "sentence-transformers/all-MiniLM-L6-v2",
+        provider: str = "huggingface",
         batch_size: int = 100,
-        dimensions: int = 1536,
+        dimensions: int = 384,
         max_retries: int = 3,
     ):
         """
@@ -47,10 +47,10 @@ class ChunkEmbedder:
 
         Args:
             neo4j_client: Connected Neo4jClient instance
-            model: Model ID (e.g., text-embedding-3-large, claude-embedding-20250115)
-            provider: "openai" or "anthropic"
-            batch_size: Chunks per embedding API call
-            dimensions: Expected vector dimension (validation only)
+            model: Model ID (currently using sentence-transformers/all-MiniLM-L6-v2)
+            provider: Currently "huggingface" (parameter kept for compatibility)
+            batch_size: Chunks per embedding call
+            dimensions: Expected vector dimension (384 for all-MiniLM-L6-v2)
             max_retries: Retry count on transient failures
         """
         self.client = neo4j_client
