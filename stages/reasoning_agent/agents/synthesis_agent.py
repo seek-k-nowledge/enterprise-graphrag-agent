@@ -138,13 +138,13 @@ Instructions:
 Answer:"""
 
         try:
-            response = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=1000,
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            answer_text = response.content[0].text
+            answer_text = response.choices[0].message.content
 
             # Extract citation markers (simplified)
             import re

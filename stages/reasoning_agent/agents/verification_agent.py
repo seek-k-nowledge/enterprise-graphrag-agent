@@ -168,13 +168,13 @@ Identify any:
 List issues found (one per line), or "VALID" if no issues."""
 
         try:
-            response = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            result_text = response.content[0].text.lower()
+            result_text = response.choices[0].message.content.lower()
             if "valid" not in result_text:
                 # Extract issues
                 for line in result_text.split("\n"):
