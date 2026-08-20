@@ -67,7 +67,7 @@ def process_ingestion(job_id: str, ingest_req: IngestionRequest) -> None:
         from stages.extraction.extractor import extract_document, ExtractionConfig
 
         config = ExtractionConfig(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             entity_types=["Person", "Organization", "Location", "Product", "Event"],
             relation_types=["WORKS_AT", "LOCATED_IN", "CREATED", "RELATED_TO"],
             chunk_size=1000,
@@ -93,9 +93,16 @@ def process_ingestion(job_id: str, ingest_req: IngestionRequest) -> None:
             from stages.graph_indexing.graph_writer import GraphWriter
 
             # Resolve entities
-            resolver = EntityResolver(app_state["neo4j_client"])
-            canonical_entities = resolver.resolve(extraction_result.entities)
-            canonical_relations = resolver.resolve_relations(extraction_result.relations)
+            resolver = EntityResolver()
+            entity_resolution = resolver.resolve(
+                extraction_result.entities,
+                document_id=ingest_req.source_id
+            )
+            canonical_entities = entity_resolution.canonical_entities
+            canonical_relations = resolver.resolve_relations(
+                extraction_result.relations,
+                entity_resolution.candidate_to_canonical
+            )
 
             logger.info(f"Entity resolution: {len(canonical_entities)} canonical entities")
 

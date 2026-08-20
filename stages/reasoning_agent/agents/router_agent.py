@@ -22,14 +22,14 @@ class RouterAgent:
 
     def __init__(
         self,
-        model: str = "llama-3.3-70b-versatile",
+        model: str = "openai/gpt-oss-120b",
         available_strategies: list[str] = None,
     ):
         """
         Initialize router agent.
 
         Args:
-            model: Groq model ID for routing (default: llama-3.3-70b-versatile)
+            model: Groq model ID for routing (default: openai/gpt-oss-120b)
             available_strategies: List of available retrieval strategies
         """
         self.model = model

@@ -20,12 +20,12 @@ class SynthesisAgent:
     Uses ChatGroq to write answers that cite specific nodes, edges, and chunks.
     """
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile"):
+    def __init__(self, model: str = "openai/gpt-oss-120b"):
         """
         Initialize synthesis agent.
 
         Args:
-            model: Groq model ID for answer generation (default: llama-3.3-70b-versatile)
+            model: Groq model ID for answer generation (default: openai/gpt-oss-120b)
         """
         self.model = model
         self.llm = None

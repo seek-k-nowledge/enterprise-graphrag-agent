@@ -58,8 +58,8 @@ __all__ = [
 # for the corpus body, stronger model for documents flagged hard. Both are
 # overridable here and belong in _config/ once that exists.
 # Using Groq models for cost-effectiveness
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
-ESCALATION_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
+ESCALATION_MODEL = "openai/gpt-oss-120b"
 
 SYSTEM_PROMPT = """\
 You extract a knowledge graph from text. You will be given one passage from a \

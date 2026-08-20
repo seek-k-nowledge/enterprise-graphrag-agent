@@ -24,12 +24,12 @@ class VerificationAgent:
     - Identifies gaps or limitations
     """
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile"):
+    def __init__(self, model: str = "openai/gpt-oss-120b"):
         """
         Initialize verification agent.
 
         Args:
-            model: Groq model ID for verification (default: llama-3.3-70b-versatile)
+            model: Groq model ID for verification (default: openai/gpt-oss-120b)
         """
         self.model = model
         self.llm = None
