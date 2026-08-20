@@ -61,7 +61,7 @@ with tab2:
             driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphrag_dev_password"))
             with driver.session() as session:
                 result = session.run(
-                    "MATCH (n)-[r]->(m) RETURN coalesce(n.name, n.id, labels(n)[0]) AS source, type(r) AS rel, coalesce(m.name, m.id, labels(m)[0]) AS target LIMIT $limit",
+                    "MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n, r, m LIMIT $limit",
                     limit=graph_limit
                 )
                 records = list(result)
@@ -73,14 +73,25 @@ with tab2:
                     edge_count = 0
 
                     for record in records:
-                        src = str(record["source"]) if record["source"] else "unknown"
-                        tgt = str(record["target"]) if record["target"] else "unknown"
-                        rel = str(record["rel"]) if record["rel"] else "link"
+                        n_node = record.get("n")
+                        rel = record.get("r")
+                        m_node = record.get("m")
 
-                        net.add_node(src, label=src, color="#97C2FC")
-                        net.add_node(tgt, label=tgt, color="#FFFF00")
-                        net.add_edge(src, tgt, title=rel, label=rel)
-                        edge_count += 1
+                        # Extract source node info
+                        if n_node:
+                            src_id = n_node.get("name") or n_node.get("id") or str(id(n_node))
+                            src_label = str(src_id)
+                            net.add_node(src_label, label=src_label, color="#97C2FC")
+
+                            # Add target node and edge only if relationship exists
+                            if rel and m_node:
+                                tgt_id = m_node.get("name") or m_node.get("id") or str(id(m_node))
+                                tgt_label = str(tgt_id)
+                                rel_type = rel.type if hasattr(rel, "type") else "link"
+
+                                net.add_node(tgt_label, label=tgt_label, color="#FFFF00")
+                                net.add_edge(src_label, tgt_label, title=rel_type, label=rel_type)
+                                edge_count += 1
 
                     net.save_graph("graph.html")
                     with open("graph.html", "r", encoding="utf-8") as f:

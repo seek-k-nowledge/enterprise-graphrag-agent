@@ -343,12 +343,13 @@ def create_app() -> FastAPI:
 
         try:
             cypher = """
-            MATCH (n)-[r]->(m)
+            MATCH (n)
+            OPTIONAL MATCH (n)-[r]->(m)
             RETURN
-                coalesce(n.name, n.id, labels(n)[0]) AS source_name,
+                coalesce(n.name, n.id) AS source_name,
                 labels(n)[0] AS source_type,
                 type(r) AS rel_type,
-                coalesce(m.name, m.id, labels(m)[0]) AS target_name,
+                coalesce(m.name, m.id) AS target_name,
                 labels(m)[0] AS target_type
             LIMIT $limit
             """
@@ -364,26 +365,27 @@ def create_app() -> FastAPI:
             edges = []
 
             for record in result.records:
-                src = record.get("source_name", "")
-                src_type = record.get("source_type", "Node")
-                tgt = record.get("target_name", "")
-                tgt_type = record.get("target_type", "Node")
-                rel = record.get("rel_type", "")
+                src = record.get("source_name")
+                src_type = record.get("source_type") or "Node"
+                tgt = record.get("target_name")
+                tgt_type = record.get("target_type") or "Node"
+                rel = record.get("rel_type")
 
-                # Add nodes
-                if src and src not in nodes:
-                    nodes[src] = {"id": src, "label": src, "type": src_type}
-                if tgt and tgt not in nodes:
-                    nodes[tgt] = {"id": tgt, "label": tgt, "type": tgt_type}
+                # Always add source node (handles isolated nodes)
+                if src:
+                    if src not in nodes:
+                        nodes[src] = {"id": src, "label": src, "type": src_type}
 
-                # Add edge
-                if src and tgt and rel:
-                    edges.append({
-                        "source": src,
-                        "target": tgt,
-                        "label": rel,
-                        "type": rel
-                    })
+                    # Add target node and edge only if relationship exists
+                    if rel and tgt:
+                        if tgt not in nodes:
+                            nodes[tgt] = {"id": tgt, "label": tgt, "type": tgt_type}
+                        edges.append({
+                            "source": src,
+                            "target": tgt,
+                            "label": rel,
+                            "type": rel
+                        })
 
             logger.info(f"Graph endpoint: {len(nodes)} nodes, {len(edges)} edges")
 
