@@ -40,9 +40,93 @@ app_state = {
     "neo4j_client": None,
     "graph_accessor": None,
     "agent_graph": None,
+    "graph_writer": None,
     "job_queue": {},  # In-memory job store for MVP
     "ready": False,
 }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Ingestion Processing
+# ─────────────────────────────────────────────────────────────────────────────
+
+def process_ingestion(job_id: str, ingest_req: IngestionRequest) -> None:
+    """Process a queued ingestion job: extract document and write to graph."""
+    if job_id not in app_state["job_queue"]:
+        return
+
+    job_info = app_state["job_queue"][job_id]
+    job = job_info["job"]
+
+    try:
+        # Update job status
+        job.status = "processing"
+        logger.info(f"Processing ingestion: {job_id}")
+
+        # Extract document
+        from stages.extraction.extractor import extract_document, ExtractionConfig
+
+        config = ExtractionConfig(
+            model="llama-3.3-70b-versatile",
+            entity_types=["Person", "Organization", "Location", "Product", "Event"],
+            relation_types=["WORKS_AT", "LOCATED_IN", "CREATED", "RELATED_TO"],
+            chunk_size=1000,
+            chunk_overlap=150,
+        )
+
+        extraction_result = extract_document(
+            text=ingest_req.document_text,
+            uri=ingest_req.source_id,
+            config=config,
+            title=ingest_req.source_id,
+        )
+
+        logger.info(
+            f"Extraction complete: {len(extraction_result.entities)} entities, "
+            f"{len(extraction_result.relations)} relations, "
+            f"{len(extraction_result.chunks)} chunks"
+        )
+
+        # Write to Neo4j
+        if app_state["neo4j_client"] and app_state["graph_writer"]:
+            from stages.graph_indexing.entity_resolver import EntityResolver
+            from stages.graph_indexing.graph_writer import GraphWriter
+
+            # Resolve entities
+            resolver = EntityResolver(app_state["neo4j_client"])
+            canonical_entities = resolver.resolve(extraction_result.entities)
+            canonical_relations = resolver.resolve_relations(extraction_result.relations)
+
+            logger.info(f"Entity resolution: {len(canonical_entities)} canonical entities")
+
+            # Write to graph
+            writer = app_state["graph_writer"]
+            node_result, rel_result = writer.write_extraction(
+                extraction_result,
+                canonical_entities,
+                canonical_relations,
+            )
+
+            logger.info(
+                f"Graph write complete: {node_result.entities_created} entities, "
+                f"{rel_result.content_relations_created} relations, "
+                f"{node_result.chunks_created} chunks"
+            )
+
+        # Update job status
+        job.status = "completed"
+        job.result = {
+            "entities_created": extraction_result.__dict__.get("entities", []),
+            "chunks_created": len(extraction_result.chunks),
+            "relations_created": extraction_result.__dict__.get("relations", []),
+        }
+
+        logger.info(f"Ingestion completed: {job_id}")
+
+    except Exception as e:
+        logger.exception(f"Ingestion processing failed for {job_id}: {e}")
+        job.status = "failed"
+        job.error = str(e)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -82,6 +166,12 @@ async def lifespan(app: FastAPI):
                 app_state["neo4j_client"]
             )
             logger.info("Created GraphAccessor")
+
+            # Create graph writer for ingestion
+            from stages.graph_indexing.graph_writer import GraphWriter
+            app_state["graph_writer"] = GraphWriter(app_state["neo4j_client"])
+            app_state["graph_writer"].setup_schema()
+            logger.info("Created GraphWriter and set up Neo4j schema")
 
         app_state["ready"] = app_state["neo4j_client"] is not None
         logger.info(f"Service ready: {app_state['ready']}")
@@ -260,14 +350,23 @@ def create_app() -> FastAPI:
                 f"priority={ingest_req.priority}"
             )
 
+            # Process ingestion synchronously (for MVP; could be made async)
+            try:
+                process_ingestion(job_id, ingest_req)
+                logger.info(f"Ingestion processed successfully: {job_id}")
+            except Exception as process_error:
+                logger.exception(f"Failed to process ingestion {job_id}: {process_error}")
+                job.status = "failed"
+                job.error = str(process_error)
+
             return IngestionResponse(
                 job_id=job_id,
-                status="queued",
-                message="Document queued for ingestion",
+                status=job.status,
+                message=f"Document ingestion {job.status}",
             )
 
         except Exception as e:
-            logger.error(f"Ingestion error ({request_id}): {e}")
+            logger.exception(f"Ingestion error ({request_id}): {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
     # ─────────────────────────────────────────────────────────────────────────
