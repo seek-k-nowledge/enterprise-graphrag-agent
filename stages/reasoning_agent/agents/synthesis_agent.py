@@ -7,6 +7,7 @@ Converts retrieval results into natural language answers, grounded in graph elem
 import logging
 import os
 
+from langchain_groq import ChatGroq
 from ..schemas import SynthesisOutput, Citation, ReasoningStep
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ class SynthesisAgent:
     """
     Synthesizes natural language answers grounded in retrieved subgraph.
 
-    Uses an LLM to write answers that cite specific nodes, edges, and chunks.
+    Uses ChatGroq to write answers that cite specific nodes, edges, and chunks.
     """
 
     def __init__(self, model: str = "llama-3.3-70b-versatile"):
@@ -27,18 +28,20 @@ class SynthesisAgent:
             model: Groq model ID for answer generation (default: llama-3.3-70b-versatile)
         """
         self.model = model
-        self.client = None
+        self.llm = None
         self._initialize_client()
 
     def _initialize_client(self) -> None:
-        """Initialize Groq client."""
+        """Initialize ChatGroq LLM client."""
         try:
-            from groq import Groq
-
-            self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            logger.info(f"Initialized Groq client for {self.model}")
+            self.llm = ChatGroq(
+                model_name=self.model,
+                groq_api_key=os.getenv("GROQ_API_KEY"),
+                temperature=0.0,
+            )
+            logger.info(f"Initialized ChatGroq for {self.model}")
         except Exception as e:
-            logger.warning(f"Failed to initialize Groq client: {e}")
+            logger.warning(f"Failed to initialize ChatGroq: {e}")
 
     def synthesize(
         self,
@@ -71,7 +74,7 @@ class SynthesisAgent:
         )
 
         try:
-            if not self.client:
+            if not self.llm:
                 # Fallback: simple answer from subgraph
                 answer_text = self._fallback_answer(query, subgraph)
                 citations = self._extract_citations_from_subgraph(subgraph)
@@ -114,7 +117,7 @@ class SynthesisAgent:
         Returns:
             Tuple of (answer_text, list of citation claims)
         """
-        if not self.client:
+        if not self.llm:
             raise RuntimeError("LLM client not initialized")
 
         # Build subgraph summary for context
@@ -138,13 +141,10 @@ Instructions:
 Answer:"""
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                max_tokens=1000,
-                messages=[{"role": "user", "content": prompt}],
-            )
+            from langchain_core.messages import HumanMessage
 
-            answer_text = response.choices[0].message.content
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            answer_text = response.content
 
             # Extract citation markers (simplified)
             import re

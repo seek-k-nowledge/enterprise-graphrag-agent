@@ -7,6 +7,7 @@ Classifies queries into types and selects appropriate retrieval strategies.
 import logging
 import os
 
+from langchain_groq import ChatGroq
 from ..schemas import RouterDecision, ReasoningStep
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ class RouterAgent:
     """
     LLM-based query router for classification and strategy selection.
 
-    Uses Claude to understand query intent and select retrieval strategies.
+    Uses ChatGroq to understand query intent and select retrieval strategies.
     """
 
     def __init__(
@@ -37,18 +38,20 @@ class RouterAgent:
             "vector_search",
             "cypher_direct",
         ]
-        self.client = None
+        self.llm = None
         self._initialize_client()
 
     def _initialize_client(self) -> None:
-        """Initialize Groq client."""
+        """Initialize ChatGroq LLM client."""
         try:
-            from groq import Groq
-
-            self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            logger.info(f"Initialized Groq client for {self.model}")
+            self.llm = ChatGroq(
+                model_name=self.model,
+                groq_api_key=os.getenv("GROQ_API_KEY"),
+                temperature=0.0,
+            )
+            logger.info(f"Initialized ChatGroq for {self.model}")
         except Exception as e:
-            logger.warning(f"Failed to initialize Groq client: {e}")
+            logger.warning(f"Failed to initialize ChatGroq: {e}")
 
     def route(self, query: str) -> tuple[RouterDecision, ReasoningStep]:
         """
@@ -69,7 +72,7 @@ class RouterAgent:
         )
 
         try:
-            if not self.client:
+            if not self.llm:
                 # Fallback to rule-based routing
                 from ..query_router import QueryRouter
 
@@ -106,7 +109,7 @@ class RouterAgent:
 
     def _llm_route(self, query: str) -> RouterDecision:
         """Use LLM to classify query and select strategies."""
-        if not self.client:
+        if not self.llm:
             raise RuntimeError("LLM client not initialized")
 
         prompt = f"""Analyze this query and classify it. Respond in JSON format.
@@ -132,13 +135,10 @@ Response format:
 }}"""
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                max_tokens=300,
-                messages=[{"role": "user", "content": prompt}],
-            )
+            from langchain_core.messages import HumanMessage
 
-            response_text = response.choices[0].message.content
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            response_text = response.content
 
             # Parse JSON response
             import json

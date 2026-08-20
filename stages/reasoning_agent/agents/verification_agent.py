@@ -7,6 +7,7 @@ Ensures answer is logically consistent, citations are valid, and identifies gaps
 import logging
 import os
 
+from langchain_groq import ChatGroq
 from ..schemas import VerificationOutput, ReasoningStep
 
 logger = logging.getLogger(__name__)
@@ -31,18 +32,20 @@ class VerificationAgent:
             model: Groq model ID for verification (default: llama-3.3-70b-versatile)
         """
         self.model = model
-        self.client = None
+        self.llm = None
         self._initialize_client()
 
     def _initialize_client(self) -> None:
-        """Initialize Groq client."""
+        """Initialize ChatGroq LLM client."""
         try:
-            from groq import Groq
-
-            self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-            logger.info(f"Initialized Groq client for {self.model}")
+            self.llm = ChatGroq(
+                model_name=self.model,
+                groq_api_key=os.getenv("GROQ_API_KEY"),
+                temperature=0.0,
+            )
+            logger.info(f"Initialized ChatGroq for {self.model}")
         except Exception as e:
-            logger.warning(f"Failed to initialize Groq client: {e}")
+            logger.warning(f"Failed to initialize ChatGroq: {e}")
 
     def verify(
         self,
@@ -87,7 +90,7 @@ class VerificationAgent:
                 output.gaps.append("Answer is long but has few citations")
 
             # Check 3: Consistency check via LLM (if available)
-            if self.client:
+            if self.llm:
                 consistency_issues = self._check_logical_consistency(
                     answer_text, citations, subgraph
                 )
@@ -145,7 +148,7 @@ class VerificationAgent:
         Returns:
             List of identified consistency issues
         """
-        if not self.client:
+        if not self.llm:
             return []
 
         issues = []
@@ -168,13 +171,10 @@ Identify any:
 List issues found (one per line), or "VALID" if no issues."""
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                max_tokens=500,
-                messages=[{"role": "user", "content": prompt}],
-            )
+            from langchain_core.messages import HumanMessage
 
-            result_text = response.choices[0].message.content.lower()
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            result_text = response.content.lower()
             if "valid" not in result_text:
                 # Extract issues
                 for line in result_text.split("\n"):
