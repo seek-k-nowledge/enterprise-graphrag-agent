@@ -52,15 +52,15 @@ class GraphWriter:
         logger.info("Setting up Neo4j schema...")
 
         constraints = [
-            "CREATE CONSTRAINT entity_id_unique FOR (e:Entity) REQUIRE e.id IS UNIQUE",
-            "CREATE CONSTRAINT chunk_id_unique FOR (c:Chunk) REQUIRE c.id IS UNIQUE",
-            "CREATE CONSTRAINT document_id_unique FOR (d:Document) REQUIRE d.id IS UNIQUE",
+            "CREATE CONSTRAINT entity_id_unique IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE",
+            "CREATE CONSTRAINT chunk_id_unique IF NOT EXISTS FOR (c:Chunk) REQUIRE c.id IS UNIQUE",
+            "CREATE CONSTRAINT document_id_unique IF NOT EXISTS FOR (d:Document) REQUIRE d.id IS UNIQUE",
         ]
 
         indexes = [
-            "CREATE INDEX entity_type_idx FOR (e:Entity) ON (e.entity_type)",
-            "CREATE INDEX chunk_document_idx FOR (c:Chunk) ON (c.document_id)",
-            "CREATE INDEX document_uri_idx FOR (d:Document) ON (d.uri)",
+            "CREATE INDEX entity_type_idx IF NOT EXISTS FOR (e:Entity) ON (e.entity_type)",
+            "CREATE INDEX chunk_document_idx IF NOT EXISTS FOR (c:Chunk) ON (c.document_id)",
+            "CREATE INDEX document_uri_idx IF NOT EXISTS FOR (d:Document) ON (d.uri)",
         ]
 
         self.client.run_schema_setup(constraints, indexes)
