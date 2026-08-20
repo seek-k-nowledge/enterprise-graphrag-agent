@@ -21,6 +21,7 @@ import hashlib
 import logging
 import os
 import re
+import time
 import unicodedata
 from datetime import datetime, timezone
 
@@ -261,12 +262,77 @@ def _extraction_with_fallback(config: ExtractionConfig, model: BaseChatModel) ->
     return RunnableLambda(extraction_with_fallback)
 
 
-def build_extractor(config: ExtractionConfig) -> Runnable:
-    """Build the prompt → model → structured-output chain with fallback.
+def _extraction_with_retry(chain: Runnable, max_retries: int = 3) -> Runnable:
+    """
+    Wrap extraction chain with retry logic for 429 rate limit errors.
 
-    ``with_structured_output`` pushes schema conformance down to the provider
-    integration. When tool calling fails, attempts JSON fallback parsing on raw
-    model output. The model is instantiated lazily by the caller's first invocation.
+    On 429, extracts retry-after delay from error and waits before retrying.
+    Uses exponential backoff on subsequent retries.
+    """
+    from langchain_core.runnables import RunnableLambda
+
+    def extraction_with_retry(input_data: dict) -> ChunkExtraction:
+        """Execute extraction with retry logic for rate limits."""
+        last_error = None
+        base_wait = 1.0
+
+        for attempt in range(max_retries + 1):
+            try:
+                return chain.invoke(input_data)
+            except Exception as e:
+                last_error = e
+                error_str = str(e)
+
+                # Check for 429 rate limit error
+                if "429" in error_str or "rate" in error_str.lower():
+                    # Try to extract retry-after from error message
+                    retry_after_match = re.search(r'retry[_-]after["\']?\s*:\s*(\d+)', error_str, re.IGNORECASE)
+                    if retry_after_match:
+                        wait_seconds = float(retry_after_match.group(1))
+                    else:
+                        # Exponential backoff: 1s, 2s, 4s, 8s, ...
+                        wait_seconds = base_wait * (2 ** attempt)
+
+                    # Add small jitter buffer (500ms)
+                    wait_seconds += 0.5
+
+                    if attempt < max_retries:
+                        logger.warning(
+                            f"Rate limit (429) on attempt {attempt + 1}/{max_retries + 1}. "
+                            f"Retrying in {wait_seconds:.1f}s. Error: {error_str[:100]}"
+                        )
+                        time.sleep(wait_seconds)
+                        continue
+                elif attempt < max_retries:
+                    # Non-rate-limit errors: try again with exponential backoff
+                    wait_seconds = base_wait * (2 ** attempt)
+                    logger.debug(
+                        f"Transient error on attempt {attempt + 1}/{max_retries + 1}. "
+                        f"Retrying in {wait_seconds:.1f}s."
+                    )
+                    time.sleep(wait_seconds)
+                    continue
+
+                # Out of retries or non-retryable error
+                break
+
+        # All retries exhausted
+        if last_error:
+            raise last_error
+
+    return RunnableLambda(extraction_with_retry)
+
+
+def build_extractor(config: ExtractionConfig) -> Runnable:
+    """Build the prompt → model → structured-output chain with fallback and retry.
+
+    Chain includes:
+    1. Prompt formatting with entity/relation types
+    2. Model invocation with structured output
+    3. JSON fallback parsing if tool calling fails
+    4. Retry with exponential backoff for rate limits (429)
+
+    The model is instantiated lazily by the caller's first invocation.
     """
     try:
         from langchain_groq import ChatGroq
@@ -290,7 +356,8 @@ def build_extractor(config: ExtractionConfig) -> Runnable:
         relation_types="\n".join(f"- {t}" for t in config.relation_types),
     )
 
-    extraction_chain = _extraction_with_fallback(config, model)
+    fallback_chain = _extraction_with_fallback(config, model)
+    extraction_chain = _extraction_with_retry(fallback_chain, max_retries=3)
     return prompt | extraction_chain
 
 
