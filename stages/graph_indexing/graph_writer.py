@@ -195,9 +195,11 @@ class GraphWriter:
             queries = []
 
             for chunk in batch:
+                chunk_name = f"Chunk {chunk.id[-8:]}" if len(chunk.id) > 8 else chunk.id
                 cypher = """
                 MERGE (c:Chunk {id: $chunk_id})
                 ON CREATE SET
+                    c.name = $chunk_name,
                     c.text = $text,
                     c.start_char = $start_char,
                     c.end_char = $end_char,
@@ -207,6 +209,7 @@ class GraphWriter:
                 """
                 params = {
                     "chunk_id": chunk.id,
+                    "chunk_name": chunk_name,
                     "text": chunk.text,
                     "start_char": chunk.start_char,
                     "end_char": chunk.end_char,
@@ -246,6 +249,7 @@ class GraphWriter:
                 cypher = """
                 MERGE (e:Entity {id: $entity_id})
                 ON CREATE SET
+                    e.name = $canonical_name,
                     e.entity_type = $entity_type,
                     e.canonical_name = $canonical_name,
                     e.surface_forms = $surface_forms,

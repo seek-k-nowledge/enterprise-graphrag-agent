@@ -141,38 +141,58 @@ with tab2:
         try:
             driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphrag_dev_password"))
             with driver.session() as session:
-                result = session.run(
-                    "MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n, r, m LIMIT $limit",
+                # Query 1: Fetch nodes with relationships
+                edges_result = session.run(
+                    """MATCH (n)-[r]->(m)
+                       RETURN labels(n)[0] AS source_type,
+                              coalesce(n.name, n.id, n.canonical_name, n.text, 'Node') AS source,
+                              type(r) AS rel,
+                              labels(m)[0] AS target_type,
+                              coalesce(m.name, m.id, m.canonical_name, m.text, 'Node') AS target
+                       LIMIT $limit""",
                     limit=graph_limit
                 )
-                records = list(result)
+                edges_records = list(edges_result)
 
-                if not records:
+                # Query 2: Fetch isolated nodes (only if we have room)
+                remaining = max(1, graph_limit - len(edges_records) * 2)
+                isolated_result = session.run(
+                    """MATCH (n)
+                       WHERE NOT EXISTS((n)-[]-())
+                       RETURN labels(n)[0] AS type,
+                              coalesce(n.name, n.id, n.canonical_name, n.text, 'Node') AS name
+                       LIMIT $limit""",
+                    limit=remaining
+                )
+                isolated_records = list(isolated_result)
+
+                all_records = edges_records + isolated_records
+
+                if not all_records:
                     st.info("📊 No graph data available. Ingest documents to populate the graph.")
                 else:
                     net = Network(height="500px", width="100%", bgcolor="#222222", font_color="white", directed=True)
                     edge_count = 0
 
-                    for record in records:
-                        n_node = record.get("n")
-                        rel = record.get("r")
-                        m_node = record.get("m")
+                    # Process edge records
+                    for record in edges_records:
+                        src = record.get("source", "Unknown")
+                        src_type = record.get("source_type", "Node")
+                        tgt = record.get("target", "Unknown")
+                        tgt_type = record.get("target_type", "Node")
+                        rel = record.get("rel", "link")
 
-                        # Extract source node info
-                        if n_node:
-                            src_id = n_node.get("name") or n_node.get("id") or str(id(n_node))
-                            src_label = str(src_id)
-                            net.add_node(src_label, label=src_label, color="#97C2FC")
+                        net.add_node(src, label=src, title=f"{src_type}", color="#97C2FC")
+                        net.add_node(tgt, label=tgt, title=f"{tgt_type}", color="#FFFF00")
+                        net.add_edge(src, tgt, title=rel, label=rel)
+                        edge_count += 1
 
-                            # Add target node and edge only if relationship exists
-                            if rel and m_node:
-                                tgt_id = m_node.get("name") or m_node.get("id") or str(id(m_node))
-                                tgt_label = str(tgt_id)
-                                rel_type = rel.type if hasattr(rel, "type") else "link"
-
-                                net.add_node(tgt_label, label=tgt_label, color="#FFFF00")
-                                net.add_edge(src_label, tgt_label, title=rel_type, label=rel_type)
-                                edge_count += 1
+                    # Process isolated node records
+                    for record in isolated_records:
+                        name = record.get("name", "Unknown")
+                        node_type = record.get("type", "Node")
+                        if name not in [n for n in net.nodes]:
+                            net.add_node(name, label=name, title=f"{node_type}", color="#97C2FC")
 
                     net.save_graph("graph.html")
                     with open("graph.html", "r", encoding="utf-8") as f:

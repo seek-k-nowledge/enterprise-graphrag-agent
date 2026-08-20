@@ -337,55 +337,81 @@ def create_app() -> FastAPI:
         """Fetch graph data for visualization.
 
         Returns nodes and edges as JSON for client-side rendering.
+        Handles both connected nodes (with relationships) and isolated nodes.
         """
         if not app_state["neo4j_client"]:
             return {"nodes": [], "edges": [], "error": "Neo4j unavailable"}
 
         try:
-            cypher = """
-            MATCH (n)
-            OPTIONAL MATCH (n)-[r]->(m)
+            # Query 1: Fetch nodes with relationships
+            cypher_edges = """
+            MATCH (n)-[r]->(m)
             RETURN
-                coalesce(n.name, n.id) AS source_name,
                 labels(n)[0] AS source_type,
-                type(r) AS rel_type,
-                coalesce(m.name, m.id) AS target_name,
-                labels(m)[0] AS target_type
+                coalesce(n.name, n.id, n.canonical_name, n.text, 'Node') AS source,
+                type(r) AS rel,
+                labels(m)[0] AS target_type,
+                coalesce(m.name, m.id, m.canonical_name, m.text, 'Node') AS target
             LIMIT $limit
             """
 
-            result = app_state["neo4j_client"].query(
-                cypher,
+            result_edges = app_state["neo4j_client"].query(
+                cypher_edges,
                 parameters={"limit": limit},
                 read_only=True
             )
 
-            # Build nodes and edges
+            # Build nodes and edges from relationships
             nodes = {}
             edges = []
 
-            for record in result.records:
-                src = record.get("source_name")
+            for record in result_edges.records:
+                src = record.get("source", "Unknown")
                 src_type = record.get("source_type") or "Node"
-                tgt = record.get("target_name")
+                tgt = record.get("target", "Unknown")
                 tgt_type = record.get("target_type") or "Node"
-                rel = record.get("rel_type")
+                rel = record.get("rel", "link")
 
-                # Always add source node (handles isolated nodes)
-                if src:
-                    if src not in nodes:
-                        nodes[src] = {"id": src, "label": src, "type": src_type}
+                # Add source node
+                if src not in nodes:
+                    nodes[src] = {"id": src, "label": src, "type": src_type}
 
-                    # Add target node and edge only if relationship exists
-                    if rel and tgt:
-                        if tgt not in nodes:
-                            nodes[tgt] = {"id": tgt, "label": tgt, "type": tgt_type}
-                        edges.append({
-                            "source": src,
-                            "target": tgt,
-                            "label": rel,
-                            "type": rel
-                        })
+                # Add target node
+                if tgt not in nodes:
+                    nodes[tgt] = {"id": tgt, "label": tgt, "type": tgt_type}
+
+                # Add edge
+                edges.append({
+                    "source": src,
+                    "target": tgt,
+                    "label": rel,
+                    "type": rel
+                })
+
+            # Query 2: Fetch isolated nodes (only if we have room in limit)
+            if len(nodes) < limit:
+                remaining = limit - len(nodes)
+                cypher_isolated = """
+                MATCH (n)
+                WHERE NOT EXISTS((n)-[]-())
+                RETURN
+                    labels(n)[0] AS type,
+                    coalesce(n.name, n.id, n.canonical_name, n.text, 'Node') AS name
+                LIMIT $limit
+                """
+
+                result_isolated = app_state["neo4j_client"].query(
+                    cypher_isolated,
+                    parameters={"limit": remaining},
+                    read_only=True
+                )
+
+                for record in result_isolated.records:
+                    name = record.get("name", "Unknown")
+                    node_type = record.get("type") or "Node"
+
+                    if name not in nodes:
+                        nodes[name] = {"id": name, "label": name, "type": node_type}
 
             logger.info(f"Graph endpoint: {len(nodes)} nodes, {len(edges)} edges")
 
