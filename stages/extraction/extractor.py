@@ -193,13 +193,80 @@ def chunk_text(text: str, document_id: str, config: ExtractionConfig) -> list[Ch
     return chunks
 
 
+def _parse_json_fallback(output: str) -> ChunkExtraction | None:
+    """
+    Attempt to extract and parse JSON from raw model output.
+
+    Used as fallback when tool calling fails but model produces valid JSON.
+    Returns parsed ChunkExtraction if valid, None otherwise.
+    """
+    import json
+    import re
+
+    try:
+        # Try direct parse first
+        return ChunkExtraction.model_validate_json(output)
+    except Exception:
+        pass
+
+    # Try to extract JSON from the output (handles markdown code blocks, etc)
+    try:
+        json_match = re.search(r'\{.*\}', output, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+            parsed = json.loads(json_str)
+            return ChunkExtraction.model_validate(parsed)
+    except Exception as e:
+        logger.debug(f"JSON fallback parsing failed: {e}")
+
+    return None
+
+
+def _extraction_with_fallback(config: ExtractionConfig, model: BaseChatModel) -> Runnable:
+    """
+    Build extraction chain with fallback JSON parsing for tool call failures.
+
+    When with_structured_output fails, attempts to parse raw JSON from model output
+    instead of discarding the response.
+    """
+    from langchain_core.language_models import LLMListParser
+    from langchain_core.exceptions import OutputParserException
+    from langchain_core.runnables import RunnableLambda
+
+    structured_chain = model.with_structured_output(ChunkExtraction)
+
+    def extraction_with_fallback(input_data: dict) -> ChunkExtraction:
+        """Try structured output, fallback to raw JSON parsing."""
+        try:
+            return structured_chain.invoke(input_data)
+        except Exception as e:
+            # Fallback: try to get raw output and parse as JSON
+            try:
+                raw_output = model.invoke(input_data)
+                if hasattr(raw_output, 'content'):
+                    content = raw_output.content
+                else:
+                    content = str(raw_output)
+
+                parsed = _parse_json_fallback(content)
+                if parsed:
+                    logger.info(f"Recovered extraction via JSON fallback after tool call error: {e}")
+                    return parsed
+            except Exception as fallback_error:
+                logger.debug(f"JSON fallback also failed: {fallback_error}")
+
+            # Both structured and fallback failed, re-raise original error
+            raise e
+
+    return RunnableLambda(extraction_with_fallback)
+
+
 def build_extractor(config: ExtractionConfig) -> Runnable:
-    """Build the prompt → model → structured-output chain.
+    """Build the prompt → model → structured-output chain with fallback.
 
     ``with_structured_output`` pushes schema conformance down to the provider
-    integration, so there is no hand-rolled JSON parsing or retry loop here.
-    The model is instantiated lazily by the caller's first invocation, so
-    building a chain does not require credentials.
+    integration. When tool calling fails, attempts JSON fallback parsing on raw
+    model output. The model is instantiated lazily by the caller's first invocation.
     """
     try:
         from langchain_groq import ChatGroq
@@ -222,7 +289,9 @@ def build_extractor(config: ExtractionConfig) -> Runnable:
         entity_types="\n".join(f"- {t}" for t in config.entity_types),
         relation_types="\n".join(f"- {t}" for t in config.relation_types),
     )
-    return prompt | model.with_structured_output(ChunkExtraction)
+
+    extraction_chain = _extraction_with_fallback(config, model)
+    return prompt | extraction_chain
 
 
 def extract_chunks(
