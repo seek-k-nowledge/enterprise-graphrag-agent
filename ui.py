@@ -141,14 +141,20 @@ with tab2:
         try:
             driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphrag_dev_password"))
             with driver.session() as session:
-                # Query 1: Fetch nodes with relationships
+                # Query 1: Fetch nodes with relationships (schema-agnostic)
                 edges_result = session.run(
                     """MATCH (n)-[r]->(m)
                        RETURN labels(n)[0] AS source_type,
-                              coalesce(n.name, n.id, n.canonical_name, n.text, 'Node') AS source,
+                              COALESCE(
+                                  head([k in keys(n) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | n[k]]),
+                                  'Node'
+                              ) AS source,
                               type(r) AS rel,
                               labels(m)[0] AS target_type,
-                              coalesce(m.name, m.id, m.canonical_name, m.text, 'Node') AS target
+                              COALESCE(
+                                  head([k in keys(m) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | m[k]]),
+                                  'Node'
+                              ) AS target
                        LIMIT $limit""",
                     limit=graph_limit
                 )
@@ -160,7 +166,10 @@ with tab2:
                     """MATCH (n)
                        WHERE NOT EXISTS((n)-[]-())
                        RETURN labels(n)[0] AS type,
-                              coalesce(n.name, n.id, n.canonical_name, n.text, 'Node') AS name
+                              COALESCE(
+                                  head([k in keys(n) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | n[k]]),
+                                  'UnnamedNode'
+                              ) AS name
                        LIMIT $limit""",
                     limit=remaining
                 )

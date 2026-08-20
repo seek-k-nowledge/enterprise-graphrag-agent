@@ -334,24 +334,32 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/graph")
     async def get_graph(limit: int = 50):
-        """Fetch graph data for visualization.
+        """Fetch graph data for visualization with schema-agnostic queries.
 
         Returns nodes and edges as JSON for client-side rendering.
         Handles both connected nodes (with relationships) and isolated nodes.
+        Uses dynamic property fallbacks to work with any node schema.
         """
         if not app_state["neo4j_client"]:
             return {"nodes": [], "edges": [], "error": "Neo4j unavailable"}
 
         try:
-            # Query 1: Fetch nodes with relationships
+            # Query 1: Fetch nodes with relationships (schema-agnostic)
+            # Uses head() + list comprehension to find first matching property key
             cypher_edges = """
             MATCH (n)-[r]->(m)
             RETURN
                 labels(n)[0] AS source_type,
-                coalesce(n.name, n.id, n.canonical_name, n.text, 'Node') AS source,
+                COALESCE(
+                    head([k in keys(n) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | n[k]]),
+                    'Node'
+                ) AS source,
                 type(r) AS rel,
                 labels(m)[0] AS target_type,
-                coalesce(m.name, m.id, m.canonical_name, m.text, 'Node') AS target
+                COALESCE(
+                    head([k in keys(m) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | m[k]]),
+                    'Node'
+                ) AS target
             LIMIT $limit
             """
 
@@ -366,11 +374,15 @@ def create_app() -> FastAPI:
             edges = []
 
             for record in result_edges.records:
-                src = record.get("source", "Unknown")
+                src = record.get("source") or "Unknown"
                 src_type = record.get("source_type") or "Node"
-                tgt = record.get("target", "Unknown")
+                tgt = record.get("target") or "Unknown"
                 tgt_type = record.get("target_type") or "Node"
-                rel = record.get("rel", "link")
+                rel = record.get("rel") or "link"
+
+                # Convert to string and use as identifier
+                src = str(src)
+                tgt = str(tgt)
 
                 # Add source node
                 if src not in nodes:
@@ -395,8 +407,11 @@ def create_app() -> FastAPI:
                 MATCH (n)
                 WHERE NOT EXISTS((n)-[]-())
                 RETURN
-                    labels(n)[0] AS type,
-                    coalesce(n.name, n.id, n.canonical_name, n.text, 'Node') AS name
+                    labels(n)[0] AS node_type,
+                    COALESCE(
+                        head([k in keys(n) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | n[k]]),
+                        'UnnamedNode'
+                    ) AS node_name
                 LIMIT $limit
                 """
 
@@ -407,8 +422,8 @@ def create_app() -> FastAPI:
                 )
 
                 for record in result_isolated.records:
-                    name = record.get("name", "Unknown")
-                    node_type = record.get("type") or "Node"
+                    name = str(record.get("node_name", "Unknown"))
+                    node_type = record.get("node_type") or "Node"
 
                     if name not in nodes:
                         nodes[name] = {"id": name, "label": name, "type": node_type}

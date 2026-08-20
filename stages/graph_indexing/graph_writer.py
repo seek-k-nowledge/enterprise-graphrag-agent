@@ -152,9 +152,13 @@ class GraphWriter:
 
         Returns True if created, False if updated.
         """
+        # Extract filename from URI for friendly display name
+        doc_name = metadata.title or metadata.uri.split("/")[-1] if metadata.uri else metadata.document_id
+
         cypher = """
         MERGE (d:Document {id: $doc_id})
         ON CREATE SET
+            d.name = $doc_name,
             d.uri = $uri,
             d.content_sha256 = $content_sha256,
             d.ingested_at = $ingested_at,
@@ -167,6 +171,7 @@ class GraphWriter:
             cypher,
             parameters={
                 "doc_id": metadata.document_id,
+                "doc_name": doc_name,
                 "uri": metadata.uri,
                 "content_sha256": metadata.content_sha256,
                 "ingested_at": metadata.ingested_at.isoformat(),
