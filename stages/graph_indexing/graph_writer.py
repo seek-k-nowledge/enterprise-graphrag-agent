@@ -264,7 +264,7 @@ class GraphWriter:
                     e.updated = $updated
                 ON MATCH SET
                     e.surface_forms = e.surface_forms + (
-                        [sf IN $surface_forms WHERE NOT sf IN e.surface_forms] | sf
+                        [sf IN $surface_forms WHERE NOT sf IN e.surface_forms | sf]
                     ),
                     e.sources = e.sources + (
                         CASE WHEN $document_id IN e.sources THEN [] ELSE [$document_id] END
@@ -408,10 +408,10 @@ class GraphWriter:
                     r.updated = $updated
                 ON MATCH SET
                     r.evidence = r.evidence + (
-                        [e IN $evidence WHERE NOT e IN r.evidence] | e
+                        [e IN $evidence WHERE NOT e IN r.evidence | e]
                     ),
                     r.supporting_chunks = r.supporting_chunks + (
-                        [c IN $supporting_chunks WHERE NOT c IN r.supporting_chunks] | c
+                        [c IN $supporting_chunks WHERE NOT c IN r.supporting_chunks | c]
                     ),
                     r.relation_count = r.relation_count + 1,
                     r.confidence = $confidence,
