@@ -1,8 +1,7 @@
 langchain
 langchain-community
 langchain-groq
-langchain-anthropic
-langchain-openai
+langchain-huggingface
 neo4j
 fastapi
 uvicorn
@@ -10,3 +9,5 @@ pydantic
 pydantic-settings
 python-dotenv
 docker
+pypdf
+streamlit

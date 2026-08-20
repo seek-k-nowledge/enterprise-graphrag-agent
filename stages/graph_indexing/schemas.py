@@ -394,14 +394,14 @@ class EmbeddingConfig(BaseModel):
     """Chunk embedding parameters."""
 
     model: str = Field(
-        default="text-embedding-3-large",
-        description="Model ID (OpenAI or Anthropic)",
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        description="Model ID (HuggingFace sentence-transformers)",
     )
     provider: str = Field(
-        default="openai", description="Provider: openai or anthropic"
+        default="huggingface", description="Provider: huggingface"
     )
-    batch_size: int = Field(default=100, description="Chunks per API call")
-    dimensions: int = Field(default=1536, description="Expected vector dimension")
+    batch_size: int = Field(default=100, description="Chunks per embedding call")
+    dimensions: int = Field(default=384, description="Expected vector dimension (384 for all-MiniLM-L6-v2)")
     cache_embeddings: bool = Field(
         default=False, description="Cache embeddings to avoid re-embedding"
     )

@@ -65,7 +65,7 @@ class ChunkEmbedder:
     def _initialize_embeddings(self) -> None:
         """Initialize the embedding model via LangChain (HuggingFace)."""
         try:
-            from langchain_community.embeddings import HuggingFaceEmbeddings
+            from langchain_huggingface import HuggingFaceEmbeddings
 
             # Use HuggingFace embeddings (ignoring provider and model parameters)
             self.embeddings = HuggingFaceEmbeddings(

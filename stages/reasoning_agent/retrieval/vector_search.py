@@ -53,7 +53,7 @@ class VectorSearchRetriever(BaseRetriever):
     def _initialize_embeddings(self) -> None:
         """Initialize the embedding model using HuggingFace."""
         try:
-            from langchain_community.embeddings import HuggingFaceEmbeddings
+            from langchain_huggingface import HuggingFaceEmbeddings
 
             self.embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2"

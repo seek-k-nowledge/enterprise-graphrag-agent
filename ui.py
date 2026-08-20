@@ -3,6 +3,7 @@ import requests
 from neo4j import GraphDatabase
 from pyvis.network import Network
 import streamlit.components.v1 as components
+import io
 
 st.set_page_config(page_title="Enterprise GraphRAG", page_icon="🕸️", layout="wide")
 st.title("🕸️ Enterprise GraphRAG Assistant")
@@ -10,21 +11,101 @@ st.title("🕸️ Enterprise GraphRAG Assistant")
 # Sidebar - Document Ingestion
 with st.sidebar:
     st.header("📄 Ingest Knowledge")
-    doc_id = st.text_input("Document ID", "doc_001")
-    doc_text = st.text_area("Document Content", height=200)
-    if st.button("Ingest Document"):
-        res = requests.post(
-            "http://localhost:8000/api/v1/ingest",
-            json={
-                "source_id": doc_id,
-                "document_text": doc_text,
-                "priority": "normal"
-            }
+
+    ingestion_tab1, ingestion_tab2 = st.tabs(["📝 Text", "📕 PDF"])
+
+    # Text Input Tab
+    with ingestion_tab1:
+        doc_id = st.text_input("Document ID", "doc_001", key="text_doc_id")
+        doc_text = st.text_area("Document Content", height=200, key="text_doc_text")
+        if st.button("Ingest Text", key="ingest_text_btn"):
+            if not doc_text.strip():
+                st.error("Document content cannot be empty")
+            else:
+                res = requests.post(
+                    "http://localhost:8000/api/v1/ingest",
+                    json={
+                        "source_id": doc_id,
+                        "document_text": doc_text,
+                        "priority": "normal"
+                    }
+                )
+                if res.status_code == 200:
+                    st.success("Ingestion job started!")
+                else:
+                    st.error(f"Error: {res.text}")
+
+    # PDF Upload Tab
+    with ingestion_tab2:
+        pdf_doc_id = st.text_input("Document ID", "pdf_doc_001", key="pdf_doc_id")
+        uploaded_file = st.file_uploader(
+            "Upload PDF or Text File",
+            type=["pdf", "txt"],
+            key="pdf_uploader"
         )
-        if res.status_code == 200:
-            st.success("Ingestion job started!")
-        else:
-            st.error(f"Error: {res.text}")
+
+        if uploaded_file is not None:
+            st.write(f"**File:** {uploaded_file.name}")
+            st.write(f"**Size:** {uploaded_file.size / 1024:.2f} KB")
+
+            if st.button("Process & Ingest PDF", key="ingest_pdf_btn"):
+                with st.spinner("Processing document..."):
+                    try:
+                        # Extract text from PDF or TXT
+                        if uploaded_file.type == "application/pdf":
+                            try:
+                                from pypdf import PdfReader
+                                pdf_reader = PdfReader(io.BytesIO(uploaded_file.read()))
+                                text = ""
+                                for page in pdf_reader.pages:
+                                    text += page.extract_text()
+                                st.success(f"✓ Extracted {len(pdf_reader.pages)} pages")
+                            except ImportError:
+                                st.error("pypdf not installed. Run: pip install pypdf")
+                                text = None
+                        else:
+                            # Plain text file
+                            text = uploaded_file.read().decode("utf-8")
+                            st.success(f"✓ Read text file ({len(text)} characters)")
+
+                        if text:
+                            # Chunk the document
+                            from langchain_text_splitters import RecursiveCharacterTextSplitter
+                            splitter = RecursiveCharacterTextSplitter(
+                                chunk_size=1000,
+                                chunk_overlap=150,
+                                length_function=len
+                            )
+                            chunks = splitter.split_text(text)
+                            st.info(f"📦 Created {len(chunks)} chunks")
+
+                            # Ingest all chunks
+                            ingested = 0
+                            failed = 0
+                            for i, chunk in enumerate(chunks):
+                                try:
+                                    res = requests.post(
+                                        "http://localhost:8000/api/v1/ingest",
+                                        json={
+                                            "source_id": f"{pdf_doc_id}_chunk_{i}",
+                                            "document_text": chunk,
+                                            "priority": "normal"
+                                        },
+                                        timeout=10
+                                    )
+                                    if res.status_code == 200:
+                                        ingested += 1
+                                    else:
+                                        failed += 1
+                                except Exception as e:
+                                    failed += 1
+
+                            st.success(f"✅ Ingestion complete: {ingested} chunks processed")
+                            if failed > 0:
+                                st.warning(f"⚠️ {failed} chunks failed")
+
+                    except Exception as e:
+                        st.error(f"❌ Processing failed: {e}")
 
 # Main Layout Tabs
 tab1, tab2 = st.tabs(["💬 Chat Assistant", "🕸️ Interactive Graph Viewer"])
