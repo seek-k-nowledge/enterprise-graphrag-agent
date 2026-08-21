@@ -21,6 +21,7 @@ from .schemas import (
     NodeUpsertResult,
     RelationUpsertResult,
 )
+from .embedder import ChunkEmbedder
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,9 @@ class GraphWriter:
             chunk_created, chunk_updated = self._write_chunks(extraction_result.chunks, extraction_result.metadata.document_id)
             node_result.chunks_created += chunk_created
             node_result.chunks_updated += chunk_updated
+
+            # Step 2b: Embed chunks and store vectors in Neo4j
+            self._embed_and_index_chunks(extraction_result.chunks, extraction_result.metadata.document_id)
 
             # Step 3: Write entity nodes
             entity_created, entity_updated = self._write_entities(canonical_entities, extraction_result.metadata.document_id)
@@ -235,6 +239,41 @@ class GraphWriter:
 
         logger.info(f"Chunks written: {created} created, {updated} updated")
         return created, updated
+
+    def _embed_and_index_chunks(self, chunks: list[Chunk], document_id: str) -> None:
+        """
+        Embed chunk text and store vectors in Neo4j for semantic search.
+
+        Args:
+            chunks: List of Chunk objects (already written to Neo4j)
+            document_id: Document ID for tracking
+
+        Logs errors but doesn't fail the write operation if embedding fails.
+        """
+        if not chunks:
+            return
+
+        try:
+            embedder = ChunkEmbedder(self.client)
+
+            # Embed all chunks for this document
+            result = embedder.embed_chunks(chunks, document_id, skip_existing=True)
+
+            # Ensure vector index exists
+            embedder.ensure_vector_index()
+
+            logger.info(
+                f"Chunk embedding complete: {result.chunks_embedded} embedded, "
+                f"{result.vectors_indexed} indexed, {len(result.errors)} errors"
+            )
+
+            # Log any embedding errors for visibility
+            if result.errors:
+                logger.warning(f"Embedding errors for document {document_id}: {result.errors}")
+
+        except Exception as e:
+            logger.error(f"Failed to embed chunks for document {document_id}: {e}")
+            # Don't re-raise: embedding failure shouldn't fail the entire write operation
 
     def _write_entities(self, canonical_entities: dict[str, CanonicalNode], document_id: str) -> tuple[int, int]:
         """
