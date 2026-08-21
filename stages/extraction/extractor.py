@@ -230,8 +230,6 @@ def _extraction_with_fallback(config: ExtractionConfig, model: BaseChatModel) ->
     When with_structured_output fails, attempts to parse raw JSON from model output
     instead of discarding the response.
     """
-    from langchain_core.language_models import LLMListParser
-    from langchain_core.exceptions import OutputParserException
     from langchain_core.runnables import RunnableLambda
 
     structured_chain = model.with_structured_output(ChunkExtraction)
