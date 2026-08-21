@@ -5,9 +5,8 @@ Ensures answer is logically consistent, citations are valid, and identifies gaps
 """
 
 import logging
-import os
 
-from langchain_groq import ChatGroq
+from ...shared.llm_provider import get_llm
 from ..schemas import VerificationOutput, ReasoningStep
 
 logger = logging.getLogger(__name__)
@@ -22,30 +21,28 @@ class VerificationAgent:
     - Citations point to valid graph elements
     - Claims are logically consistent
     - Identifies gaps or limitations
+
+    Uses provider-agnostic LLM layer (Cerebras + Groq failover) for consistency checking.
     """
 
-    def __init__(self, model: str = "openai/gpt-oss-120b"):
+    def __init__(self, model: str = "gpt-oss-120b"):
         """
         Initialize verification agent.
 
         Args:
-            model: Groq model ID for verification (default: openai/gpt-oss-120b)
+            model: Model ID for verification (default: gpt-oss-120b, available on Cerebras and Groq)
         """
         self.model = model
         self.llm = None
         self._initialize_client()
 
     def _initialize_client(self) -> None:
-        """Initialize ChatGroq LLM client."""
+        """Initialize LLM client via provider layer (Cerebras + Groq failover)."""
         try:
-            self.llm = ChatGroq(
-                model_name=self.model,
-                groq_api_key=os.getenv("GROQ_API_KEY"),
-                temperature=0.0,
-            )
-            logger.info(f"Initialized ChatGroq for {self.model}")
+            self.llm = get_llm(model=self.model, temperature=0.0)
+            logger.info(f"Initialized LLM for {self.model}")
         except Exception as e:
-            logger.warning(f"Failed to initialize ChatGroq: {e}")
+            logger.warning(f"Failed to initialize LLM: {e}")
 
     def verify(
         self,
