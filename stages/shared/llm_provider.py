@@ -1,8 +1,13 @@
 """Provider-agnostic LLM layer with automatic failover.
 
 Implements intelligent provider selection:
-- Primary: Cerebras API (OpenAI-compatible, gpt-oss-120b)
-- Fallback: Groq (free tier, gpt-oss-120b)
+- Primary: Cerebras API (OpenAI-compatible, model: gpt-oss-120b)
+- Fallback: Groq (free tier, model: openai/gpt-oss-120b)
+
+Model name translation:
+- Input: "gpt-oss-120b" or similar generic model name
+- Cerebras gets: "gpt-oss-120b" (no prefix)
+- Groq gets: "openai/gpt-oss-120b" (with prefix)
 
 Composes with existing retry/backoff and JSON fallback logic in extraction.
 """
@@ -14,6 +19,34 @@ from typing import Optional
 from langchain_core.language_models import BaseChatModel
 
 logger = logging.getLogger(__name__)
+
+# Model name mapping per provider
+MODEL_NAMES = {
+    "cerebras": {
+        "gpt-oss-120b": "gpt-oss-120b",
+        "openai/gpt-oss-120b": "gpt-oss-120b",  # Handle both formats
+    },
+    "groq": {
+        "gpt-oss-120b": "openai/gpt-oss-120b",
+        "openai/gpt-oss-120b": "openai/gpt-oss-120b",  # Already correct
+    },
+}
+
+
+def _get_provider_model_name(provider: str, model: str) -> str:
+    """
+    Translate generic model name to provider-specific format.
+
+    Args:
+        provider: Provider name ("cerebras" or "groq")
+        model: Generic model name
+
+    Returns:
+        Provider-specific model name
+    """
+    if provider in MODEL_NAMES and model in MODEL_NAMES[provider]:
+        return MODEL_NAMES[provider][model]
+    return model  # Fallback: return as-is if not mapped
 
 
 def get_llm(
@@ -71,7 +104,7 @@ def _create_cerebras_client(model: str, temperature: float) -> BaseChatModel:
     Create a Cerebras LLM client (OpenAI-compatible API).
 
     Args:
-        model: Model ID
+        model: Generic model name (translated to Cerebras format)
         temperature: Temperature
 
     Returns:
@@ -79,23 +112,32 @@ def _create_cerebras_client(model: str, temperature: float) -> BaseChatModel:
 
     Raises:
         ImportError if langchain_openai not installed
-        RuntimeError if CEREBRAS_API_KEY not set
+        RuntimeError if CEREBRAS_API_KEY not set or model not found
     """
     api_key = os.getenv("CEREBRAS_API_KEY")
     if not api_key:
         raise RuntimeError("CEREBRAS_API_KEY not set in environment")
 
+    # Translate generic model name to Cerebras format
+    cerebras_model = _get_provider_model_name("cerebras", model)
+
     try:
         from langchain_openai import ChatOpenAI
 
-        return ChatOpenAI(
-            model_name=model,
+        llm = ChatOpenAI(
+            model_name=cerebras_model,
             api_key=api_key,
             base_url="https://api.cerebras.ai/v1",
             temperature=temperature,
         )
+        logger.info(f"Initialized Cerebras client with model {cerebras_model}")
+        return llm
     except ImportError:
         raise ImportError("langchain_openai required for Cerebras provider")
+    except Exception as e:
+        # Re-raise to trigger fallback
+        logger.error(f"Cerebras initialization error: {e}")
+        raise
 
 
 def _create_groq_client(model: str, temperature: float) -> BaseChatModel:
@@ -103,7 +145,7 @@ def _create_groq_client(model: str, temperature: float) -> BaseChatModel:
     Create a Groq LLM client.
 
     Args:
-        model: Model ID
+        model: Generic model name (translated to Groq format)
         temperature: Temperature
 
     Returns:
@@ -117,13 +159,21 @@ def _create_groq_client(model: str, temperature: float) -> BaseChatModel:
     if not api_key:
         raise RuntimeError("GROQ_API_KEY not set in environment")
 
+    # Translate generic model name to Groq format
+    groq_model = _get_provider_model_name("groq", model)
+
     try:
         from langchain_groq import ChatGroq
 
-        return ChatGroq(
-            model_name=model,
+        llm = ChatGroq(
+            model_name=groq_model,
             groq_api_key=api_key,
             temperature=temperature,
         )
+        logger.info(f"Initialized Groq client with model {groq_model}")
+        return llm
     except ImportError:
         raise ImportError("langchain_groq required for Groq provider")
+    except Exception as e:
+        logger.error(f"Groq initialization error: {e}")
+        raise
