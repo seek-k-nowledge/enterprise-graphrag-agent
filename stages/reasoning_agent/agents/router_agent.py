@@ -5,9 +5,8 @@ Classifies queries into types and selects appropriate retrieval strategies.
 """
 
 import logging
-import os
 
-from langchain_groq import ChatGroq
+from ...shared.llm_provider import get_llm
 from ..schemas import RouterDecision, ReasoningStep
 
 logger = logging.getLogger(__name__)
@@ -17,19 +16,20 @@ class RouterAgent:
     """
     LLM-based query router for classification and strategy selection.
 
-    Uses ChatGroq to understand query intent and select retrieval strategies.
+    Uses provider-agnostic LLM layer (Cerebras + Groq failover) to understand
+    query intent and select retrieval strategies.
     """
 
     def __init__(
         self,
-        model: str = "openai/gpt-oss-120b",
+        model: str = "gpt-oss-120b",
         available_strategies: list[str] = None,
     ):
         """
         Initialize router agent.
 
         Args:
-            model: Groq model ID for routing (default: openai/gpt-oss-120b)
+            model: Model ID for routing (default: gpt-oss-120b, available on Cerebras and Groq)
             available_strategies: List of available retrieval strategies
         """
         self.model = model
@@ -42,16 +42,12 @@ class RouterAgent:
         self._initialize_client()
 
     def _initialize_client(self) -> None:
-        """Initialize ChatGroq LLM client."""
+        """Initialize LLM client via provider layer (Cerebras + Groq failover)."""
         try:
-            self.llm = ChatGroq(
-                model_name=self.model,
-                groq_api_key=os.getenv("GROQ_API_KEY"),
-                temperature=0.0,
-            )
-            logger.info(f"Initialized ChatGroq for {self.model}")
+            self.llm = get_llm(model=self.model, temperature=0.0)
+            logger.info(f"Initialized LLM for {self.model}")
         except Exception as e:
-            logger.warning(f"Failed to initialize ChatGroq: {e}")
+            logger.warning(f"Failed to initialize LLM: {e}")
 
     def route(self, query: str) -> tuple[RouterDecision, ReasoningStep]:
         """
