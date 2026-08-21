@@ -32,6 +32,7 @@ from langchain_core.runnables import Runnable
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import BaseModel, ConfigDict, Field
 
+from stages.shared.llm_provider import get_llm
 from stages.extraction.schemas import (
     CandidateEntity,
     CandidateRelation,
@@ -326,27 +327,17 @@ def build_extractor(config: ExtractionConfig) -> Runnable:
 
     Chain includes:
     1. Prompt formatting with entity/relation types
-    2. Model invocation with structured output
+    2. Model invocation via provider layer (Cerebras + Groq failover)
     3. JSON fallback parsing if tool calling fails
     4. Retry with exponential backoff for rate limits (429)
 
-    The model is instantiated lazily by the caller's first invocation.
+    Uses get_llm() for provider-agnostic model initialization.
     """
-    try:
-        from langchain_groq import ChatGroq
+    model: BaseChatModel = get_llm(
+        model=config.model,
+        temperature=config.temperature,
+    )
 
-        model: BaseChatModel = ChatGroq(
-            model_name=config.model,
-            temperature=config.temperature,
-            api_key=os.getenv("GROQ_API_KEY"),
-        )
-    except ImportError:
-        # Fallback to init_chat_model
-        model: BaseChatModel = init_chat_model(
-            config.model,
-            model_provider=config.model_provider or "groq",
-            temperature=config.temperature,
-        )
     prompt = ChatPromptTemplate.from_messages(
         [("system", SYSTEM_PROMPT), ("human", USER_PROMPT)]
     ).partial(
