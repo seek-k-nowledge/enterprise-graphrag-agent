@@ -380,13 +380,13 @@ class ReasoningConfig(BaseModel):
         description="Enabled retrieval strategies",
     )
     query_classifier_model: str = Field(
-        default="claude-sonnet-5", description="Model for query classification"
+        default="gpt-oss-120b", description="Model for query classification"
     )
     cypher_writer_model: str = Field(
-        default="claude-sonnet-5", description="Model for Cypher authoring"
+        default="gpt-oss-120b", description="Model for Cypher authoring"
     )
     synthesis_model: str = Field(
-        default="claude-sonnet-5", description="Model for answer synthesis"
+        default="gpt-oss-120b", description="Model for answer synthesis"
     )
     max_traversal_hops: int = Field(default=3, ge=1, le=5)
     vector_search_top_k: int = Field(default=10, ge=1, le=100)
