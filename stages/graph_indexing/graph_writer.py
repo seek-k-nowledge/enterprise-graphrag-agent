@@ -213,7 +213,8 @@ class GraphWriter:
                     c.start_char = $start_char,
                     c.end_char = $end_char,
                     c.document_id = $document_id,
-                    c.created = $created
+                    c.created = $created,
+                    c.embedding = []
                 RETURN c, elementId(c) as chunk_id
                 """
                 params = {
