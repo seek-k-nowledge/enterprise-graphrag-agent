@@ -147,7 +147,7 @@ class VectorSearchRetriever(BaseRetriever):
 
         For each chunk, retrieve:
         - The chunk itself
-        - All entities that mention this chunk
+        - All entities that mention this chunk (via MENTIONED_IN relationship)
         - Relations between those entities
         """
         subgraph = Subgraph()
@@ -156,14 +156,38 @@ class VectorSearchRetriever(BaseRetriever):
         for chunk in chunks:
             subgraph.chunks[chunk.id] = chunk
 
-        # For each chunk, find entities mentioning it
-        # This is a simplified approach; ideally we'd use a Cypher query
-        # to get all entities -> chunk -> entity paths
-        for chunk in chunks:
-            # In practice, Stage 2 would store MENTIONED_IN relationships
-            # For now, we retrieve chunks and note they need entity context
-            # A full implementation would query Neo4j for entities by chunk
-            pass
+        # For each chunk, find entities mentioning it via MENTIONED_IN relationship
+        chunk_ids = [chunk.id for chunk in chunks]
+
+        if chunk_ids:
+            try:
+                # Query for entities connected to these chunks via MENTIONED_IN
+                cypher = """
+                MATCH (e:Entity)-[:MENTIONED_IN]->(c:Chunk)
+                WHERE c.id IN $chunk_ids
+                RETURN DISTINCT e
+                """
+
+                result = self.graph_accessor.client.query(
+                    cypher,
+                    parameters={"chunk_ids": chunk_ids},
+                    read_only=True,
+                )
+
+                # Convert Neo4j nodes to GraphEntity and add to subgraph
+                for record in result.records:
+                    entity_data = record.get("e")
+                    if entity_data:
+                        entity = self.graph_accessor._entity_from_neo4j(entity_data)
+                        subgraph.entities[entity.id] = entity
+
+                logger.debug(
+                    f"Retrieved {len(subgraph.entities)} entities mentioning {len(chunks)} chunks"
+                )
+
+            except Exception as e:
+                logger.error(f"Error retrieving entities for chunks: {e}")
+                # Continue without entities rather than failing the retrieval
 
         return subgraph
 
