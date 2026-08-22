@@ -202,6 +202,9 @@ def _parse_json_fallback(output: str) -> ChunkExtraction | None:
     Attempt to extract and parse JSON from raw model output.
 
     Used as fallback when tool calling fails but model produces valid JSON.
+    Handles cases where individual fields (entities, relations) are JSON-encoded
+    strings instead of actual lists.
+
     Returns parsed ChunkExtraction if valid, None otherwise.
     """
     import json
@@ -219,6 +222,24 @@ def _parse_json_fallback(output: str) -> ChunkExtraction | None:
         if json_match:
             json_str = json_match.group(0)
             parsed = json.loads(json_str)
+
+            # Fix: handle fields that come back as JSON-encoded strings
+            # Some models return {"entities": "[{...}]"} instead of {"entities": [{...}]}
+            if isinstance(parsed, dict):
+                for field_name in ['entities', 'relations']:
+                    if field_name in parsed:
+                        field_value = parsed[field_name]
+                        # If it's a string that looks like JSON, try to parse it
+                        if isinstance(field_value, str):
+                            try:
+                                parsed[field_name] = json.loads(field_value)
+                                logger.debug(
+                                    f"Decoded JSON-encoded {field_name} field from string"
+                                )
+                            except (json.JSONDecodeError, ValueError):
+                                # Not valid JSON, leave as-is and let validation fail
+                                pass
+
             return ChunkExtraction.model_validate(parsed)
     except Exception as e:
         logger.debug(f"JSON fallback parsing failed: {e}")
