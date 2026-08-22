@@ -3,11 +3,13 @@
 Implements intelligent provider selection:
 - Primary: Cerebras API (OpenAI-compatible, model: gpt-oss-120b)
 - Fallback: Groq (free tier, model: openai/gpt-oss-120b)
+- Optional: Anthropic (testing tier, model: claude-haiku-4-5-20251001) — explicit only
 
 Model name translation:
 - Input: "gpt-oss-120b" or similar generic model name
 - Cerebras gets: "gpt-oss-120b" (no prefix)
 - Groq gets: "openai/gpt-oss-120b" (with prefix)
+- Anthropic gets: "claude-haiku-4-5-20251001" (native Claude model ID)
 
 Composes with existing retry/backoff and JSON fallback logic in extraction.
 """
@@ -29,6 +31,9 @@ MODEL_NAMES = {
     "groq": {
         "gpt-oss-120b": "openai/gpt-oss-120b",
         "openai/gpt-oss-120b": "openai/gpt-oss-120b",  # Already correct
+    },
+    "anthropic": {
+        "claude-haiku-4-5-20251001": "claude-haiku-4-5-20251001",
     },
 }
 
@@ -60,7 +65,8 @@ def get_llm(
     Args:
         model: Model ID (e.g., "gpt-oss-120b")
         temperature: Temperature for model sampling
-        provider: Force a specific provider ("cerebras" or "groq"), or None for automatic
+        provider: Force a specific provider ("cerebras", "groq", or "anthropic"),
+                  or None for automatic (Cerebras → Groq, Anthropic not in fallback chain)
 
     Returns:
         Initialized BaseChatModel instance
@@ -69,6 +75,17 @@ def get_llm(
         RuntimeError if all providers fail
     """
     errors = []
+
+    # Anthropic: explicit only, no fallback
+    if provider == "anthropic":
+        try:
+            llm = _create_anthropic_client(model, temperature)
+            logger.info(f"Using Anthropic provider for {model}")
+            return llm
+        except Exception as e:
+            error_msg = f"Anthropic initialization failed: {e}"
+            logger.warning(error_msg)
+            raise RuntimeError(f"Failed to initialize Anthropic provider: {e}")
 
     # Try primary provider first (Cerebras)
     if provider is None or provider == "cerebras":
@@ -176,4 +193,43 @@ def _create_groq_client(model: str, temperature: float) -> BaseChatModel:
         raise ImportError("langchain_groq required for Groq provider")
     except Exception as e:
         logger.error(f"Groq initialization error: {e}")
+        raise
+
+
+def _create_anthropic_client(model: str, temperature: float) -> BaseChatModel:
+    """
+    Create an Anthropic LLM client (Claude models).
+
+    Args:
+        model: Claude model ID (e.g., "claude-haiku-4-5-20251001")
+        temperature: Temperature
+
+    Returns:
+        ChatAnthropic instance
+
+    Raises:
+        ImportError if langchain_anthropic not installed
+        RuntimeError if ANTHROPIC_API_KEY not set
+    """
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY not set in environment")
+
+    # Anthropic model names are used as-is
+    anthropic_model = _get_provider_model_name("anthropic", model)
+
+    try:
+        from langchain_anthropic import ChatAnthropic
+
+        llm = ChatAnthropic(
+            model=anthropic_model,
+            api_key=api_key,
+            temperature=temperature,
+        )
+        logger.info(f"Initialized Anthropic client with model {anthropic_model}")
+        return llm
+    except ImportError:
+        raise ImportError("langchain_anthropic required for Anthropic provider")
+    except Exception as e:
+        logger.error(f"Anthropic initialization error: {e}")
         raise

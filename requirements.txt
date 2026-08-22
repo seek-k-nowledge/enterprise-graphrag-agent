@@ -2,6 +2,7 @@ langchain
 langchain-community
 langchain-groq
 langchain-openai
+langchain-anthropic
 langchain-huggingface
 sentence-transformers
 neo4j
