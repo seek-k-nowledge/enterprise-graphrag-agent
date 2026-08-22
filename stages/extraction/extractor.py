@@ -91,11 +91,13 @@ fill them.\
 
 USER_PROMPT = "Passage:\n\n{chunk_text}"
 
-# Conservative starting point for prose. Overlap is deliberate: a relation whose
-# subject and object straddle a boundary is otherwise unrecoverable. The cost is
-# the same triple arriving from adjacent chunks, which `assemble` merges.
-DEFAULT_CHUNK_SIZE = 1200
-DEFAULT_CHUNK_OVERLAP = 200
+# Optimized chunk sizing for semantic retrieval and entity extraction.
+# Smaller chunks (400 tokens) improve retrieval precision: a relevant sentence
+# isn't buried in unrelated surrounding text. Moderate overlap (75 tokens)
+# recovers relations crossing chunk boundaries without excessive duplication.
+# Stage 2's `assemble` deduplicates triples from adjacent chunks.
+DEFAULT_CHUNK_SIZE = 400
+DEFAULT_CHUNK_OVERLAP = 75
 
 _CONTROL_CHARS = {"\t", "\n"}
 _MAX_PAYLOAD_CHARS = 300
