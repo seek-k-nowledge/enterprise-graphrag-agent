@@ -119,9 +119,8 @@ class SynthesisAgent:
         # Build subgraph summary for context
         context = self._build_context(subgraph)
 
-        prompt = f"""You are an expert research assistant. Answer the following question
-using ONLY information from the provided knowledge graph. Every claim must be traceable
-to the graph.
+        prompt = f"""You are an expert research assistant providing comprehensive answers
+grounded in provided knowledge.
 
 Question: {query}
 
@@ -129,12 +128,15 @@ Knowledge Graph:
 {context}
 
 Instructions:
-1. Write a clear, concise answer using information from the graph
-2. Each sentence should make one or more specific claims
-3. Reference specific entities and relationships
-4. Format citations inline: [CITATION: entity_id or relation_type]
+1. Answer the question as thoroughly and confidently as possible using ONLY the
+   information provided in the knowledge graph above.
+2. Provide a complete, well-structured answer without hedging or disclaimers.
+3. Make specific factual claims supported by the graph elements provided.
+4. Cite sources inline: [CITATION: entity_id or relation_type]
+5. If the graph has limited information about the question, briefly note any key
+   gaps at the very end (one sentence max), but lead with what you DO know.
 
-Answer:"""
+Answer with confidence and completeness:"""
 
         try:
             from langchain_core.messages import HumanMessage
