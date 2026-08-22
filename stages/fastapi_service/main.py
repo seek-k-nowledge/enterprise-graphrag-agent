@@ -450,22 +450,24 @@ def create_app() -> FastAPI:
             return {"nodes": [], "edges": [], "error": "Neo4j unavailable"}
 
         try:
-            # Query 1: Fetch nodes with relationships (schema-agnostic)
-            # Uses head() + list comprehension to find first matching property key
+            # Query 1: Fetch Entity nodes and their semantic relationships
+            # Prioritizes Entity nodes (with real names) over Chunk/Document scaffolding
             cypher_edges = """
-            MATCH (n)-[r]->(m)
+            MATCH (e:Entity)-[r:RELATED_TO|MENTIONED_IN|WORKS_AT|LOCATED_IN|CREATED]->(target)
+            WHERE target:Entity OR target:Chunk OR target:Document
             RETURN
-                labels(n)[0] AS source_type,
-                COALESCE(
-                    head([k in keys(n) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | n[k]]),
-                    'Node'
-                ) AS source,
+                'Entity' AS source_type,
+                COALESCE(e.canonical_name, e.name, e.id, 'Unknown') AS source,
                 type(r) AS rel,
-                labels(m)[0] AS target_type,
-                COALESCE(
-                    head([k in keys(m) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | m[k]]),
-                    'Node'
-                ) AS target
+                labels(target)[0] AS target_type,
+                CASE
+                    WHEN target:Entity THEN COALESCE(target.canonical_name, target.name, target.id, 'Unknown')
+                    WHEN target:Chunk THEN COALESCE(target.document_id, 'Chunk')
+                    WHEN target:Document THEN COALESCE(target.name, target.id, 'Document')
+                    ELSE 'Unknown'
+                END AS target,
+                elementId(e) AS source_id,
+                elementId(target) AS target_id
             LIMIT $limit
             """
 
@@ -506,19 +508,26 @@ def create_app() -> FastAPI:
                     "type": rel
                 })
 
-            # Query 2: Fetch isolated nodes (only if we have room in limit)
+            # Query 2: Fetch isolated Entity nodes (only if we have room in limit)
+            # Prioritize Entity nodes over Chunk/Document if any exist
             if len(nodes) < limit:
                 remaining = limit - len(nodes)
                 cypher_isolated = """
-                MATCH (n)
+                MATCH (n:Entity)
+                WHERE NOT EXISTS((n)-[]-())
+                RETURN
+                    'Entity' AS node_type,
+                    COALESCE(n.canonical_name, n.name, n.id, 'UnnamedEntity') AS node_name,
+                    elementId(n) AS node_id
+                LIMIT $limit
+                UNION
+                MATCH (n:Chunk|Document)
                 WHERE NOT EXISTS((n)-[]-())
                 RETURN
                     labels(n)[0] AS node_type,
-                    COALESCE(
-                        head([k in keys(n) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | n[k]]),
-                        'UnnamedNode'
-                    ) AS node_name
-                LIMIT $limit
+                    COALESCE(n.name, n.document_id, n.id, 'UnnamedNode') AS node_name,
+                    elementId(n) AS node_id
+                LIMIT 0
                 """
 
                 result_isolated = app_state["neo4j_client"].query(
@@ -530,9 +539,10 @@ def create_app() -> FastAPI:
                 for record in result_isolated.records:
                     name = str(record.get("node_name", "Unknown"))
                     node_type = record.get("node_type") or "Node"
+                    node_id = str(record.get("node_id", name))
 
-                    if name not in nodes:
-                        nodes[name] = {"id": name, "label": name, "type": node_type}
+                    if node_id not in nodes:
+                        nodes[node_id] = {"id": node_id, "label": name, "type": node_type}
 
             logger.info(f"Graph endpoint: {len(nodes)} nodes, {len(edges)} edges")
 
