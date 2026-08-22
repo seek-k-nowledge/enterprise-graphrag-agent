@@ -251,13 +251,20 @@ class AgentGraph:
             # Handle both object and dict access
             merged_subgraph = getattr(retrieval_results, 'merged_subgraph', None) if not isinstance(retrieval_results, dict) else retrieval_results.get('merged_subgraph')
             entities = getattr(merged_subgraph, 'entities', {}) if merged_subgraph and not isinstance(merged_subgraph, dict) else (merged_subgraph.get('entities', {}) if merged_subgraph else {})
+            chunks = getattr(merged_subgraph, 'chunks', {}) if merged_subgraph and not isinstance(merged_subgraph, dict) else (merged_subgraph.get('chunks', {}) if merged_subgraph else {})
 
-            if not entities:
+            # Resilience fallback: if no entities but chunks exist, still synthesize from chunks
+            if not entities and not chunks:
                 state.draft_answer = "No information found for your query."
                 state.citations = []
                 return state
 
             query_text = getattr(state.query, 'text', '') if hasattr(state, 'query') and not isinstance(state.query, dict) else (state.get('query', {}).get('text', '') if isinstance(state, dict) else state.query.get('text', ''))
+
+            # Synthesize even if entities are empty but chunks exist
+            # (chunks provide raw vector-RAG answer even without entity context)
+            if not entities and chunks:
+                logger.info(f"No entities found; synthesizing from {len(chunks)} chunks alone")
 
             synthesis_output, step = self.synthesis_agent.synthesize(
                 query_text,
