@@ -30,7 +30,7 @@ class RetrievalAgent:
         self,
         graph_accessor: GraphAccessor,
         max_hops: int = 2,
-        top_k: int = 10,
+        top_k: int = 20,
         timeout_sec: int = 30,
     ):
         """
@@ -39,7 +39,7 @@ class RetrievalAgent:
         Args:
             graph_accessor: GraphAccessor instance
             max_hops: Default max hops for traversal
-            top_k: Default top-k for vector search
+            top_k: Default top-k for vector search (default 20 for broad coverage)
             timeout_sec: Query timeout in seconds
         """
         self.graph_accessor = graph_accessor

@@ -389,7 +389,7 @@ class ReasoningConfig(BaseModel):
         default="gpt-oss-120b", description="Model for answer synthesis"
     )
     max_traversal_hops: int = Field(default=3, ge=1, le=5)
-    vector_search_top_k: int = Field(default=10, ge=1, le=100)
+    vector_search_top_k: int = Field(default=20, ge=1, le=100, description="Default top-k for vector search (increased from 10 for broader coverage)")
     min_citation_confidence: float = Field(default=0.3, ge=0.0, le=1.0)
     enable_checkpointing: bool = Field(default=True)
     checkpoint_backend: str = Field(default="sqlite", description="sqlite or postgres")

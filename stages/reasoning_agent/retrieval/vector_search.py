@@ -30,7 +30,7 @@ class VectorSearchRetriever(BaseRetriever):
         graph_accessor: GraphAccessor,
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         embedding_provider: str = "huggingface",
-        top_k: int = 10,
+        top_k: int = 20,
         timeout_sec: int = 30,
     ):
         """
@@ -40,7 +40,7 @@ class VectorSearchRetriever(BaseRetriever):
             graph_accessor: GraphAccessor instance
             embedding_model: Model ID for embedding (currently using HuggingFace)
             embedding_provider: Provider (currently "huggingface")
-            top_k: Top-K chunks to retrieve
+            top_k: Top-K chunks to retrieve (default 20 for broad question coverage)
             timeout_sec: Query timeout in seconds
         """
         super().__init__(graph_accessor, timeout_sec)
