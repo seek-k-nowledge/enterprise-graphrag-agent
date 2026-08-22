@@ -352,6 +352,8 @@ class GraphWriter:
         Returns (created_count, updated_count).
         """
         created, updated = 0, 0
+        total_relations_attempted = 0
+        entities_with_chunks = 0
 
         for entity in canonical_entities.values():
             # Use chunk_ids preserved through entity resolution
@@ -364,6 +366,7 @@ class GraphWriter:
                 logger.debug(f"No chunks tracked for entity {entity.id}; skipping mention relations")
                 continue
 
+            entities_with_chunks += 1
             queries = []
             for chunk_id in chunk_ids:
                 # Only mention chunks that actually include this entity
@@ -379,6 +382,7 @@ class GraphWriter:
                     "chunk_id": chunk_id,
                 }
                 queries.append((cypher, params))
+                total_relations_attempted += 1
 
             if queries:
                 results = self.client.batch_execute(queries, read_only=False)
@@ -388,7 +392,10 @@ class GraphWriter:
                     else:
                         updated += 1
 
-        logger.info(f"Mention relations written: {created} created, {updated} updated")
+        logger.info(
+            f"Mention relations written: {created} created, {updated} updated "
+            f"({entities_with_chunks} entities with chunks, {total_relations_attempted} total relations)"
+        )
         return created, updated
 
     def _write_from_relations(self, chunks: list[Chunk], document_id: str) -> int:
