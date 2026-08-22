@@ -87,7 +87,9 @@ MODEL_NAMES = {
         "openai/gpt-oss-120b": "openai/gpt-oss-120b",  # Already correct
     },
     "anthropic": {
-        "claude-haiku-4-5-20251001": "claude-haiku-4-5-20251001",
+        "gpt-oss-120b": "claude-haiku-4-5-20251001",
+        "openai/gpt-oss-120b": "claude-haiku-4-5-20251001",  # Translate generic names
+        "claude-haiku-4-5-20251001": "claude-haiku-4-5-20251001",  # Native Claude ID
     },
 }
 
@@ -320,7 +322,7 @@ def _create_anthropic_client(model: str, temperature: float) -> BaseChatModel:
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY not set in environment")
 
-    # Anthropic model names are used as-is
+    # Translate generic model name to Anthropic format
     anthropic_model = _get_provider_model_name("anthropic", model)
 
     try:
