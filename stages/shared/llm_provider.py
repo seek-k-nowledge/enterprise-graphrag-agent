@@ -11,16 +11,70 @@ Model name translation:
 - Groq gets: "openai/gpt-oss-120b" (with prefix)
 - Anthropic gets: "claude-haiku-4-5-20251001" (native Claude model ID)
 
+Fallover behavior:
+- Initialization errors: caught immediately, tries next provider
+- Call-time errors (402, 429, etc): caught during invoke/generate, retries fallback
+
 Composes with existing retry/backoff and JSON fallback logic in extraction.
 """
 
 import logging
 import os
-from typing import Optional
+from typing import Optional, Any
 
 from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import BaseMessage, AIMessage
 
 logger = logging.getLogger(__name__)
+
+
+class FalloverLLM(BaseChatModel):
+    """
+    Wrapper that adds call-time fallover to a primary LLM.
+
+    If the primary LLM fails during invoke/generate (e.g., 402, 429),
+    automatically retries with a fallback LLM instead.
+    """
+
+    def __init__(
+        self,
+        primary: BaseChatModel,
+        fallback: BaseChatModel,
+        model: str,
+        temperature: float,
+    ):
+        super().__init__()
+        self.primary = primary
+        self.fallback = fallback
+        self.model = model
+        self.temperature = temperature
+
+    @property
+    def _llm_type(self) -> str:
+        return f"fallover_{self.primary._llm_type}"
+
+    def _generate(self, messages: list[BaseMessage], **kwargs: Any) -> Any:
+        """Try primary, fall back on error."""
+        try:
+            return self.primary._generate(messages, **kwargs)
+        except Exception as e:
+            logger.warning(
+                f"Primary LLM failed during call: {e}. "
+                f"Falling back to {self.fallback._llm_type}"
+            )
+            return self.fallback._generate(messages, **kwargs)
+
+    async def _agenerate(self, messages: list[BaseMessage], **kwargs: Any) -> Any:
+        """Async version: try primary, fall back on error."""
+        try:
+            return await self.primary._agenerate(messages, **kwargs)
+        except Exception as e:
+            logger.warning(
+                f"Primary LLM failed during async call: {e}. "
+                f"Falling back to {self.fallback._llm_type}"
+            )
+            return await self.fallback._agenerate(messages, **kwargs)
+
 
 # Model name mapping per provider
 MODEL_NAMES = {
@@ -62,6 +116,9 @@ def get_llm(
     """
     Get an LLM from the primary (Cerebras) or fallback (Groq) provider.
 
+    When provider=None, returns a FalloverLLM that wraps both providers
+    and falls back at call-time if the primary fails.
+
     Args:
         model: Model ID (e.g., "gpt-oss-120b")
         temperature: Temperature for model sampling
@@ -69,7 +126,7 @@ def get_llm(
                   or None for automatic (Cerebras → Groq, Anthropic not in fallback chain)
 
     Returns:
-        Initialized BaseChatModel instance
+        Initialized BaseChatModel instance (possibly wrapped with call-time fallover)
 
     Raises:
         RuntimeError if all providers fail
@@ -87,33 +144,70 @@ def get_llm(
             logger.warning(error_msg)
             raise RuntimeError(f"Failed to initialize Anthropic provider: {e}")
 
-    # Try primary provider first (Cerebras)
-    if provider is None or provider == "cerebras":
+    # Automatic fallover (provider=None): wrap both in FalloverLLM
+    if provider is None:
+        primary = None
+        fallback = None
+
+        # Try primary provider first (Cerebras)
         try:
-            llm = _create_cerebras_client(model, temperature)
-            logger.info(f"Using Cerebras provider for {model}")
-            return llm
+            primary = _create_cerebras_client(model, temperature)
+            logger.info(f"Initialized Cerebras provider for call-time fallover")
         except Exception as e:
             error_msg = f"Cerebras initialization failed: {e}"
             logger.warning(error_msg)
             errors.append(error_msg)
 
-    # Fall back to Groq
-    if provider is None or provider == "groq":
+        # Try fallback provider (Groq)
         try:
-            llm = _create_groq_client(model, temperature)
-            logger.info(f"Using Groq provider (fallback) for {model}")
-            return llm
+            fallback = _create_groq_client(model, temperature)
+            logger.info(f"Initialized Groq provider for call-time fallover")
         except Exception as e:
             error_msg = f"Groq initialization failed: {e}"
             logger.warning(error_msg)
             errors.append(error_msg)
 
-    # All providers failed
-    raise RuntimeError(
-        f"Failed to initialize LLM. Tried providers: {provider or 'cerebras, groq'}. "
-        f"Errors: {' | '.join(errors)}"
-    )
+        # At least one provider must initialize
+        if primary is None and fallback is None:
+            raise RuntimeError(
+                f"Failed to initialize any LLM provider (Cerebras, Groq). "
+                f"Errors: {' | '.join(errors)}"
+            )
+
+        # If we have both, wrap in FalloverLLM
+        if primary is not None and fallback is not None:
+            llm = FalloverLLM(primary, fallback, model, temperature)
+            logger.info("Using FalloverLLM with Cerebras→Groq chain")
+            return llm
+
+        # If only primary, use it directly (with warning)
+        if primary is not None:
+            logger.warning("Groq unavailable; using Cerebras only (no fallover)")
+            return primary
+
+        # If only fallback, use it directly (with warning)
+        logger.warning("Cerebras unavailable; using Groq only (no fallover)")
+        return fallback
+
+    # Explicit provider selection (cerebras or groq): no fallover
+    if provider == "cerebras":
+        try:
+            llm = _create_cerebras_client(model, temperature)
+            logger.info(f"Using Cerebras provider for {model}")
+            return llm
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize Cerebras provider: {e}")
+
+    if provider == "groq":
+        try:
+            llm = _create_groq_client(model, temperature)
+            logger.info(f"Using Groq provider for {model}")
+            return llm
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize Groq provider: {e}")
+
+    # Unknown provider
+    raise RuntimeError(f"Unknown provider: {provider}")
 
 
 def _create_cerebras_client(model: str, temperature: float) -> BaseChatModel:
