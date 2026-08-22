@@ -384,7 +384,7 @@ class EntityResolver:
         """
         Merge a candidate's data into an existing canonical node.
 
-        Updates surface forms, sources, and candidate ID tracking.
+        Updates surface forms, sources, candidate ID tracking, and chunk IDs.
         """
         # Add surface form if new
         if candidate.surface_form not in canonical.surface_forms:
@@ -397,6 +397,11 @@ class EntityResolver:
         # Track candidate ID for tracing
         if candidate.id not in canonical.candidate_ids:
             canonical.candidate_ids.append(candidate.id)
+
+        # Preserve chunk IDs from candidate (for MENTIONED_IN relationships)
+        for chunk_id in candidate.chunk_ids:
+            if chunk_id not in canonical.chunk_ids:
+                canonical.chunk_ids.append(chunk_id)
 
         # Update timestamp
         canonical.updated = datetime.utcnow()

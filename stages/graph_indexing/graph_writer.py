@@ -346,28 +346,27 @@ class GraphWriter:
         """
         Write MENTIONED_IN relationships (Entity) -[:MENTIONED_IN]-> (Chunk).
 
+        Uses chunk_ids preserved from Stage 1 candidates during entity resolution.
+        Only creates relationships to chunks that actually mention the entity.
+
         Returns (created_count, updated_count).
         """
         created, updated = 0, 0
 
         for entity in canonical_entities.values():
-            # Determine which chunks mention this entity
-            chunk_ids = set()
-            for candidate_id in entity.candidate_ids:
-                # In practice, we'd track chunk_ids from the candidate
-                # For now, we rely on the entity's resolution process to track them
-                pass
+            # Use chunk_ids preserved through entity resolution
+            chunk_ids = set(entity.chunk_ids)
 
-            if not chunk_ids and entity.candidate_ids:
-                # Fallback: iterate entities in Stage 1 to find chunks
-                # This is a limitation of the current design; ideally, we'd pass chunk_ids through resolution
-                logger.warning(f"No chunks tracked for entity {entity.id}; skipping mention relations")
+            if not chunk_ids:
+                # No chunks tracked for this entity; skip mention relations
+                # This can happen if entity was created through cross-document resolution
+                # without explicit chunk tracking
+                logger.debug(f"No chunks tracked for entity {entity.id}; skipping mention relations")
                 continue
 
             queries = []
-            for chunk in chunks:
-                # Simplified: mention all chunks that were part of the document
-                # A more precise approach tracks which chunks were sources for each candidate
+            for chunk_id in chunk_ids:
+                # Only mention chunks that actually include this entity
                 cypher = """
                 MATCH (e:Entity {id: $entity_id}), (c:Chunk {id: $chunk_id})
                 MERGE (e)-[r:MENTIONED_IN]->(c)
@@ -377,7 +376,7 @@ class GraphWriter:
                 """
                 params = {
                     "entity_id": entity.id,
-                    "chunk_id": chunk.id,
+                    "chunk_id": chunk_id,
                 }
                 queries.append((cypher, params))
 

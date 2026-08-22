@@ -65,6 +65,10 @@ class CanonicalNode(BaseModel):
         default_factory=list,
         description="CandidateEntity IDs that merged into this canonical node; for tracing",
     )
+    chunk_ids: list[str] = Field(
+        default_factory=list,
+        description="Chunk IDs (from Stage 1) that mention this entity; used for MENTIONED_IN relations",
+    )
 
     @field_validator("surface_forms")
     @classmethod
