@@ -242,7 +242,17 @@ def _parse_json_fallback(output: str) -> ChunkExtraction | None:
 
             return ChunkExtraction.model_validate(parsed)
     except Exception as e:
-        logger.debug(f"JSON fallback parsing failed: {e}")
+        # Log validation errors with context to help debug problematic chunks
+        error_msg = str(e)
+        if "validation error" in error_msg.lower():
+            # Include first 200 chars of parsed JSON to identify the problematic field
+            parsed_sample = str(parsed)[:200] if 'parsed' in locals() else "unknown"
+            logger.warning(
+                f"JSON validation failed: {error_msg[:100]}... "
+                f"Parsed sample: {parsed_sample}"
+            )
+        else:
+            logger.debug(f"JSON fallback parsing failed: {e}")
 
     return None
 

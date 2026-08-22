@@ -70,8 +70,8 @@ def process_ingestion(job_id: str, ingest_req: IngestionRequest) -> None:
             model="openai/gpt-oss-120b",
             entity_types=["Person", "Organization", "Location", "Product", "Event"],
             relation_types=["WORKS_AT", "LOCATED_IN", "CREATED", "RELATED_TO"],
-            chunk_size=1000,
-            chunk_overlap=150,
+            # Uses optimized defaults: chunk_size=400, chunk_overlap=75
+            # (defined in stages/extraction/extractor.py DEFAULT_CHUNK_SIZE/OVERLAP)
         )
 
         extraction_result = extract_document(
