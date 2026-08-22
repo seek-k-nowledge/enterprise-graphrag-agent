@@ -119,11 +119,16 @@ def get_llm(
     When provider=None, returns a FalloverLLM that wraps both providers
     and falls back at call-time if the primary fails.
 
+    Provider selection order:
+    - If provider argument is passed: use that (Anthropic, Cerebras, or Groq)
+    - Elif DEFAULT_LLM_PROVIDER env var is set: use that as override
+    - Else: default order (Cerebras → Groq)
+
     Args:
         model: Model ID (e.g., "gpt-oss-120b")
         temperature: Temperature for model sampling
         provider: Force a specific provider ("cerebras", "groq", or "anthropic"),
-                  or None for automatic (Cerebras → Groq, Anthropic not in fallback chain)
+                  or None for automatic (uses DEFAULT_LLM_PROVIDER or defaults)
 
     Returns:
         Initialized BaseChatModel instance (possibly wrapped with call-time fallover)
@@ -132,6 +137,12 @@ def get_llm(
         RuntimeError if all providers fail
     """
     errors = []
+
+    # Use explicit provider, or fall back to DEFAULT_LLM_PROVIDER env var
+    if provider is None:
+        provider = os.getenv("DEFAULT_LLM_PROVIDER")
+        if provider:
+            logger.info(f"Using DEFAULT_LLM_PROVIDER={provider}")
 
     # Anthropic: explicit only, no fallback
     if provider == "anthropic":
