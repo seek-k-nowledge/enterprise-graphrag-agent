@@ -312,7 +312,7 @@ class ChunkEmbedder:
             CREATE VECTOR INDEX chunk_embedding_idx
             IF NOT EXISTS
             FOR (c:Chunk) ON (c.embedding)
-            OPTIONS {indexConfig: {vector: {dimensions: $dimensions, similarity_function: "cosine"}}}
+            OPTIONS {indexConfig: {`vector.dimensions`: $dimensions, `vector.similarity_function`: "cosine"}}
             """
 
             self.client.query(
