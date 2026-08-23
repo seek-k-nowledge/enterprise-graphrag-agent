@@ -106,12 +106,12 @@ class SynthesisAgent:
     # Private methods
     # ─────────────────────────────────────────────────────────────────────────────
 
-    def _llm_synthesize(self, query: str, subgraph) -> tuple[str, list[str]]:
+    def _llm_synthesize(self, query: str, subgraph) -> tuple[str, list[int]]:
         """
-        Use LLM to synthesize answer and extract citation claims.
+        Use LLM to synthesize answer with numbered citations at sentence ends.
 
         Returns:
-            Tuple of (answer_text, list of citation claims)
+            Tuple of (answer_text_with_references, list of citation indices used)
         """
         if not self.llm:
             raise RuntimeError("LLM client not initialized")
@@ -132,7 +132,8 @@ Instructions:
    information provided in the knowledge graph above.
 2. Provide a complete, well-structured answer without hedging or disclaimers.
 3. Make specific factual claims supported by the graph elements provided.
-4. Cite sources inline: [CITATION: entity_id or relation_type]
+4. Cite sources by placing a number in brackets at the END of sentences: [1], [2], etc.
+   Place the citation after the period: "Claim here. [1]" — never wrap cited content.
 5. If the graph has limited information about the question, briefly note any key
    gaps at the very end (one sentence max), but lead with what you DO know.
 
@@ -140,19 +141,27 @@ Answer with confidence and completeness:"""
 
         try:
             from langchain_core.messages import HumanMessage
+            import re
 
             response = self.llm.invoke([HumanMessage(content=prompt)])
             answer_text = response.content
 
-            # Extract citation markers (simplified)
-            import re
+            # Extract numbered citation indices [1], [2], etc.
+            citations_used = set()
+            for match in re.finditer(r'\[(\d+)\]', answer_text):
+                citations_used.add(int(match.group(1)))
 
-            citations = re.findall(r'\[CITATION:\s*([^\]]+)\]', answer_text)
+            # Map each used index to a source from the subgraph
+            citation_map = self._build_citation_map(subgraph, max(citations_used) if citations_used else 0)
 
-            # Remove markers from answer
-            answer_text = re.sub(r'\s*\[CITATION:[^\]]*\]', '', answer_text)
+            # Build reference section
+            reference_section = self._build_reference_section(citation_map, citations_used)
 
-            return answer_text, citations
+            # Append references to answer
+            if reference_section:
+                answer_text = answer_text.rstrip() + "\n\n" + reference_section
+
+            return answer_text, sorted(list(citations_used))
 
         except Exception as e:
             logger.error(f"LLM synthesis failed: {e}")
@@ -186,47 +195,89 @@ Answer with confidence and completeness:"""
 
         return citations
 
-    def _ground_citations(self, citation_claims: list[str], subgraph) -> list[Citation]:
+    def _ground_citations(self, citation_indices: list[int], subgraph) -> list[Citation]:
         """
-        Convert citation claims into Citation objects grounded in subgraph.
+        Convert numbered citation indices into Citation objects grounded in subgraph.
 
         Args:
-            citation_claims: List of citation identifiers from LLM
+            citation_indices: List of citation numbers [1], [2], etc. from LLM
             subgraph: Subgraph to validate against
 
         Returns:
             List of Citation objects
         """
         citations = []
+        citation_map = self._build_citation_map(subgraph, max(citation_indices) if citation_indices else 0)
 
-        for claim_id in citation_claims:
-            # Try to find in entities
-            if claim_id in subgraph.entities:
-                entity = subgraph.entities[claim_id]
+        for idx in citation_indices:
+            if idx in citation_map:
+                source_type, source_id, source_text = citation_map[idx]
                 citations.append(
                     Citation(
-                        claim=f"Entity information about {entity.canonical_name}",
-                        source_type="node",
-                        source_id=entity.id,
-                        source_text=entity.description or entity.canonical_name,
-                        confidence=0.9,
-                    )
-                )
-
-            # Try to find in relations
-            elif claim_id in subgraph.relations:
-                rel = subgraph.relations[claim_id]
-                citations.append(
-                    Citation(
-                        claim=f"Relation: {rel.relation_type}",
-                        source_type="edge",
-                        source_id=claim_id,
-                        source_text=rel.description or rel.relation_type,
-                        confidence=rel.confidence,
+                        claim=f"Reference [{idx}]",
+                        source_type=source_type,
+                        source_id=source_id,
+                        source_text=source_text,
+                        confidence=0.85,
                     )
                 )
 
         return citations
+
+    def _build_citation_map(self, subgraph, num_citations: int) -> dict:
+        """
+        Build a map from citation indices to subgraph sources.
+
+        Returns dict: {1: (source_type, source_id, source_text), ...}
+        """
+        citation_map = {}
+        idx = 1
+
+        # Map chunks first (highest similarity first) since they contain actual evidence
+        sorted_chunks = sorted(
+            subgraph.chunks.values(),
+            key=lambda c: c.similarity_score if c.similarity_score else 0.0,
+            reverse=True
+        )
+        for chunk in sorted_chunks:
+            if idx > num_citations:
+                break
+            snippet = chunk.text[:80] + "..." if len(chunk.text) > 80 else chunk.text
+            citation_map[idx] = ("chunk", chunk.id, snippet)
+            idx += 1
+
+        # Then map entities
+        for entity in list(subgraph.entities.values()):
+            if idx > num_citations:
+                break
+            citation_map[idx] = ("node", entity.id, entity.canonical_name)
+            idx += 1
+
+        # Then map relations
+        for rel in list(subgraph.relations.values()):
+            if idx > num_citations:
+                break
+            citation_map[idx] = ("edge", rel.source_id, f"{rel.relation_type}")
+            idx += 1
+
+        return citation_map
+
+    def _build_reference_section(self, citation_map: dict, citations_used: set) -> str:
+        """
+        Build a references section for numbered citations.
+
+        Returns: Markdown-formatted reference list
+        """
+        if not citations_used or not citation_map:
+            return ""
+
+        lines = ["## References"]
+        for idx in sorted(citations_used):
+            if idx in citation_map:
+                source_type, source_id, source_text = citation_map[idx]
+                lines.append(f"[{idx}] {source_text}")
+
+        return "\n".join(lines)
 
     def _build_context(self, subgraph) -> str:
         """Build a text summary of the subgraph for LLM context."""
