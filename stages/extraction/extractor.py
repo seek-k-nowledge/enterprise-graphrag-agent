@@ -409,7 +409,15 @@ def extract_chunks(
     errors: list[ExtractionError] = []
     for chunk, outcome in zip(chunks, outcomes, strict=True):
         if isinstance(outcome, BaseException):
-            logger.warning("extraction failed for chunk %s: %s", chunk.id, outcome)
+            # Log failing chunk content for investigation
+            chunk_preview = chunk.text[:200] if len(chunk.text) > 200 else chunk.text
+            logger.warning(
+                "extraction failed for chunk %s (length=%d bytes): %s\nChunk content (first 200 chars):\n%s",
+                chunk.id,
+                len(chunk.text),
+                outcome,
+                chunk_preview,
+            )
             errors.append(
                 ExtractionError(
                     chunk_id=chunk.id,
