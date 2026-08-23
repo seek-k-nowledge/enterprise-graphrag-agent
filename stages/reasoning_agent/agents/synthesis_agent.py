@@ -245,10 +245,15 @@ Answer with confidence and completeness:"""
             for rel in list(subgraph.relations.values())[:10]:
                 lines.append(f"  - {rel.source_id} --[{rel.relation_type}]--> {rel.target_id}")
 
-        # Chunks
+        # Chunks (sorted by similarity score descending)
         if subgraph.chunks:
             lines.append("\nKey passages:")
-            for chunk in list(subgraph.chunks.values())[:5]:
+            sorted_chunks = sorted(
+                subgraph.chunks.values(),
+                key=lambda c: c.similarity_score if c.similarity_score else 0.0,
+                reverse=True
+            )
+            for chunk in sorted_chunks[:15]:
                 text = chunk.text[:100] + "..." if len(chunk.text) > 100 else chunk.text
                 lines.append(f"  - {text}")
 
