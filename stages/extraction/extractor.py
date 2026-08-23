@@ -139,7 +139,20 @@ def normalize_text(text: str) -> str:
     what the whole provenance chain rests on. Normalization must stay
     deterministic — offsets are meaningless against text that cannot be
     reproduced.
+
+    PDF-specific: Also replaces common Unicode punctuation variants with ASCII
+    equivalents for portability and searchability. PDFs often use:
+    -   (narrow no-break space) → regular space
+    - ‑ (non-breaking hyphen) → regular hyphen
+    - ‐ (hyphen) → regular hyphen
+    These replacements preserve character count/offsets while making text
+    copy-pasteable and queryable.
     """
+    # Handle PDF Unicode artifacts (narrow spaces, non-breaking hyphens, etc.)
+    text = text.replace(" ", " ")  # narrow no-break space → space
+    text = text.replace("‑", "-")  # non-breaking hyphen → hyphen
+    text = text.replace("‐", "-")  # hyphen → hyphen
+
     text = unicodedata.normalize("NFC", text)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     return "".join(
