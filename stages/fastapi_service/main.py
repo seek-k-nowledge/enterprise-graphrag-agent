@@ -267,10 +267,12 @@ def create_app() -> FastAPI:
                 top_k=10,  # Default
             )
 
-            # Answer query
+            # Answer query with optional provider/key override
             answer_payload = answer_query(
                 payload,
                 app_state["graph_accessor"],
+                provider=query_req.llm_provider,
+                api_key=query_req.llm_api_key,
             )
 
             # Convert to response (include trace only if requested)

@@ -70,6 +70,8 @@ def answer_query(
     query_payload: QueryPayload,
     graph_accessor: GraphAccessor,
     config: Optional[ReasoningConfig] = None,
+    provider: Optional[str] = None,
+    api_key: Optional[str] = None,
 ) -> AnswerPayload:
     """
     Answer a user query using the agent swarm.
@@ -84,6 +86,8 @@ def answer_query(
         query_payload: QueryPayload with user query
         graph_accessor: GraphAccessor instance (read-only interface to Stage 2)
         config: ReasoningConfig (uses defaults if None)
+        provider: LLM provider override (cerebras, groq, anthropic)
+        api_key: API key for the specified provider
 
     Returns:
         AnswerPayload with grounded answer, citations, and full audit trail
@@ -93,6 +97,12 @@ def answer_query(
     """
     if config is None:
         config = ReasoningConfig()
+
+    # Override provider/api_key if provided
+    if provider is not None:
+        config.llm_provider = provider
+    if api_key is not None:
+        config.llm_api_key = api_key
 
     logger.info(
         f"Answering query: '{query_payload.text}' "

@@ -399,3 +399,9 @@ class ReasoningConfig(BaseModel):
     query_timeout_sec: int = Field(default=30, ge=5, le=300)
     enable_caching: bool = Field(default=True)
     cache_ttl_sec: int = Field(default=3600)
+    llm_provider: Optional[str] = Field(
+        default=None, description="LLM provider override (cerebras, groq, anthropic)"
+    )
+    llm_api_key: Optional[str] = Field(
+        default=None, description="API key for the specified provider"
+    )
