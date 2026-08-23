@@ -252,7 +252,11 @@ class CypherDirectRetriever(BaseRetriever):
             if records:
                 rel_type = records[0].get("relation_type", "Unknown")
                 confidence = records[0].get("confidence", 0.5)
-                return f"Related by: {rel_type} (confidence: {confidence:.2f})"
+                try:
+                    confidence_float = float(confidence)
+                    return f"Related by: {rel_type} (confidence: {confidence_float:.2f})"
+                except (ValueError, TypeError):
+                    return f"Related by: {rel_type} (confidence: {confidence})"
             return "No relation found."
 
         return f"Results: {len(records)} records"
