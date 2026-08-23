@@ -27,7 +27,9 @@ with st.sidebar:
                     json={
                         "source_id": doc_id,
                         "document_text": doc_text,
-                        "priority": "normal"
+                        "priority": "normal",
+                        "llm_provider": st.session_state.llm_provider,
+                        "llm_api_key": st.session_state.llm_api_key,
                     }
                 )
                 if res.status_code == 200:
@@ -107,10 +109,102 @@ with st.sidebar:
                     except Exception as e:
                         st.error(f"❌ Processing failed: {e}")
 
+# Initialize session state for LLM settings
+if "llm_provider" not in st.session_state:
+    st.session_state.llm_provider = None
+if "llm_api_key" not in st.session_state:
+    st.session_state.llm_api_key = None
+
+# Settings in sidebar
+with st.sidebar:
+    st.divider()
+    st.subheader("⚙️ LLM Settings")
+
+    provider_options = [
+        ("Auto (Cerebras→Groq)", None),
+        ("Groq", "groq"),
+        ("Cerebras", "cerebras"),
+        ("Anthropic", "anthropic"),
+    ]
+    provider_labels = [label for label, _ in provider_options]
+    provider_values = [value for _, value in provider_options]
+
+    current_index = 0
+    if st.session_state.llm_provider is not None:
+        try:
+            current_index = provider_values.index(st.session_state.llm_provider)
+        except ValueError:
+            current_index = 0
+
+    selected_label = st.selectbox(
+        "Provider",
+        options=provider_labels,
+        index=current_index,
+        key="settings_provider"
+    )
+    selected_provider = provider_values[provider_labels.index(selected_label)]
+
+    api_key = st.text_input(
+        "API Key",
+        type="password",
+        key="settings_api_key",
+        placeholder="Paste your API key here",
+        help="Your provider's API key. Only used for this session."
+    )
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Test Connection", key="test_conn_btn"):
+            if api_key and selected_provider:
+                try:
+                    res = requests.post(
+                        "http://localhost:8000/api/v1/query",
+                        json={
+                            "query": "test connection",
+                            "llm_provider": selected_provider,
+                            "llm_api_key": api_key,
+                        },
+                        timeout=10
+                    )
+                    if res.status_code == 200:
+                        st.success("✓ Connected!")
+                    else:
+                        st.error(f"Error: {res.json().get('detail', res.text)}")
+                except Exception as e:
+                    st.error(f"Connection failed: {str(e)}")
+            else:
+                st.warning("Select provider and enter API key")
+
+    with col2:
+        if st.button("Save Settings", key="save_settings_btn"):
+            st.session_state.llm_provider = selected_provider
+            st.session_state.llm_api_key = api_key
+            st.success("Settings saved for this session!")
+
+    if st.session_state.llm_provider:
+        st.caption(f"Using: {selected_label}")
+
+# Check if provider configured
+provider_configured = bool(st.session_state.llm_api_key and st.session_state.llm_provider)
+
 # Main Layout Tabs
 tab1, tab2 = st.tabs(["💬 Chat Assistant", "🕸️ Interactive Graph Viewer"])
 
 with tab1:
+    # First-run onboarding
+    if not provider_configured:
+        st.warning("""
+        ⚠️ **API Key Not Configured**
+
+        To use this application, you need an LLM provider API key:
+        - **Groq** (free tier, recommended): [Get key at console.groq.com](https://console.groq.com)
+        - **Cerebras**: [Sign up at cerebras.ai](https://cerebras.ai)
+        - **Anthropic**: [API key at console.anthropic.com](https://console.anthropic.com)
+
+        Once you have a key, go to **⚙️ LLM Settings** above to configure it.
+        """)
+        st.stop()
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
@@ -122,7 +216,14 @@ with tab1:
         st.chat_message("user").write(prompt)
 
         with st.spinner("Searching graph & synthesizing answer..."):
-            res = requests.post("http://localhost:8000/api/v1/query", json={"query": prompt})
+            res = requests.post(
+                "http://localhost:8000/api/v1/query",
+                json={
+                    "query": prompt,
+                    "llm_provider": st.session_state.llm_provider,
+                    "llm_api_key": st.session_state.llm_api_key,
+                }
+            )
             if res.status_code == 200:
                 answer = res.json().get("answer", "No response received.")
             else:
