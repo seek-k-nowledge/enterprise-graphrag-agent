@@ -62,6 +62,36 @@ This project uses cost-optimized model switching to balance capability and expen
 
 This discipline keeps token cost linear in project scope rather than quadratic in iteration.
 
+## Running the Application
+
+### One-Click Launch (Windows)
+- **start.bat**: Launches full stack with `docker compose up -d`
+  - Neo4j (localhost:7687)
+  - FastAPI backend (localhost:8000)
+  - Streamlit UI (localhost:8501)
+  - Opens browser automatically
+- **stop.bat**: Clean shutdown with `docker compose down`
+
+### Requires Docker Desktop
+Install from https://www.docker.com/products/docker-desktop
+
+### LLM Provider Configuration
+Users configure the LLM provider in the Streamlit UI:
+1. Go to **⚙️ LLM Settings** in the sidebar
+2. Select provider (Groq recommended for free tier)
+3. Paste API key
+4. Click "Test Connection"
+5. Click "Save Settings"
+
+Provider/key are stored in session_state and passed with every request:
+- Query endpoint: `POST /api/v1/query` with `llm_provider`, `llm_api_key` fields
+- Ingest endpoint: `POST /api/v1/ingest` with same fields (threaded through extraction if needed)
+
+Free API keys:
+- **Groq**: https://console.groq.com (recommended)
+- **Cerebras**: https://cerebras.ai
+- **Anthropic**: https://console.anthropic.com
+
 ## Git
 
 Default branch is `master`. Never commit `.env`.
