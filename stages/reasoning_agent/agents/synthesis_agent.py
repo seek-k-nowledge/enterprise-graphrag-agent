@@ -34,6 +34,7 @@ class SynthesisAgent:
     def _initialize_client(self) -> None:
         """Initialize LLM client via provider layer (Cerebras + Groq failover)."""
         try:
+            # temperature=0.0 ensures deterministic, reproducible answers for consistency
             self.llm = get_llm(model=self.model, temperature=0.0)
             logger.info(f"Initialized LLM for {self.model}")
         except Exception as e:
