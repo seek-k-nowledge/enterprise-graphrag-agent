@@ -29,6 +29,12 @@ class QueryRequest(BaseModel):
     timeout_sec: Optional[int] = Field(
         default=60, ge=10, le=300, description="Query timeout in seconds"
     )
+    llm_provider: Optional[str] = Field(
+        default=None, description="LLM provider override (cerebras, groq, anthropic)"
+    )
+    llm_api_key: Optional[str] = Field(
+        default=None, description="API key for the specified provider"
+    )
 
 
 class CitationModel(BaseModel):
@@ -119,6 +125,12 @@ class IngestionRequest(BaseModel):
     priority: str = Field(
         default="normal",
         description="Job priority: low, normal, or high",
+    )
+    llm_provider: Optional[str] = Field(
+        default=None, description="LLM provider override (cerebras, groq, anthropic)"
+    )
+    llm_api_key: Optional[str] = Field(
+        default=None, description="API key for the specified provider"
     )
 
     class Config:
