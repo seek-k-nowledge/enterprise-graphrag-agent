@@ -139,76 +139,43 @@ with tab2:
 
     if st.button("Refresh Graph View"):
         try:
-            driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphrag_dev_password"))
-            with driver.session() as session:
-                # Query 1: Fetch nodes with relationships (schema-agnostic)
-                edges_result = session.run(
-                    """MATCH (n)-[r]->(m)
-                       RETURN labels(n)[0] AS source_type,
-                              COALESCE(
-                                  head([k in keys(n) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | n[k]]),
-                                  'Node'
-                              ) AS source,
-                              type(r) AS rel,
-                              labels(m)[0] AS target_type,
-                              COALESCE(
-                                  head([k in keys(m) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | m[k]]),
-                                  'Node'
-                              ) AS target
-                       LIMIT $limit""",
-                    limit=graph_limit
-                )
-                edges_records = list(edges_result)
+            res = requests.get(
+                "http://localhost:8000/api/v1/graph",
+                params={"limit": graph_limit}
+            )
+            if res.status_code == 200:
+                graph_data = res.json()
+                nodes = graph_data.get("nodes", [])
+                edges = graph_data.get("edges", [])
 
-                # Query 2: Fetch isolated nodes (only if we have room)
-                remaining = max(1, graph_limit - len(edges_records) * 2)
-                isolated_result = session.run(
-                    """MATCH (n)
-                       WHERE NOT EXISTS((n)-[]-())
-                       RETURN labels(n)[0] AS type,
-                              COALESCE(
-                                  head([k in keys(n) WHERE k IN ['name', 'id', 'text', 'title', 'canonical_name'] | n[k]]),
-                                  'UnnamedNode'
-                              ) AS name
-                       LIMIT $limit""",
-                    limit=remaining
-                )
-                isolated_records = list(isolated_result)
-
-                all_records = edges_records + isolated_records
-
-                if not all_records:
+                if not nodes:
                     st.info("📊 No graph data available. Ingest documents to populate the graph.")
                 else:
                     net = Network(height="500px", width="100%", bgcolor="#222222", font_color="white", directed=True)
-                    edge_count = 0
 
-                    # Process edge records
-                    for record in edges_records:
-                        src = record.get("source", "Unknown")
-                        src_type = record.get("source_type", "Node")
-                        tgt = record.get("target", "Unknown")
-                        tgt_type = record.get("target_type", "Node")
-                        rel = record.get("rel", "link")
+                    # Add nodes
+                    for node in nodes:
+                        node_id = node.get("id", "Unknown")
+                        label = node.get("label", "Unknown")
+                        node_type = node.get("type", "Node")
+                        color = "#97C2FC" if node_type == "Entity" else "#FFFF00"
+                        net.add_node(node_id, label=label, title=f"{node_type}", color=color)
 
-                        net.add_node(src, label=src, title=f"{src_type}", color="#97C2FC")
-                        net.add_node(tgt, label=tgt, title=f"{tgt_type}", color="#FFFF00")
-                        net.add_edge(src, tgt, title=rel, label=rel)
-                        edge_count += 1
-
-                    # Process isolated node records
-                    for record in isolated_records:
-                        name = record.get("name", "Unknown")
-                        node_type = record.get("type", "Node")
-                        if name not in [n for n in net.nodes]:
-                            net.add_node(name, label=name, title=f"{node_type}", color="#97C2FC")
+                    # Add edges
+                    for edge in edges:
+                        src = edge.get("source", "Unknown")
+                        tgt = edge.get("target", "Unknown")
+                        label = edge.get("label", "link")
+                        net.add_edge(src, tgt, title=label, label=label)
 
                     net.save_graph("graph.html")
                     with open("graph.html", "r", encoding="utf-8") as f:
                         html_content = f.read()
                     components.html(html_content, height=520)
-                    st.caption(f"✓ Displayed {net.num_nodes} nodes, {edge_count} edges")
+                    st.caption(f"✓ Displayed {net.num_nodes} nodes, {len(edges)} edges")
+            else:
+                st.error(f"❌ Failed to fetch graph data: {res.text}")
 
         except Exception as e:
-            st.error(f"❌ Could not connect to Neo4j database: {e}")
-            st.caption("Ensure Neo4j is running at bolt://localhost:7687 with credentials neo4j/graphrag_dev_password")
+            st.error(f"❌ Could not fetch graph: {e}")
+            st.caption("Ensure the FastAPI service is running at http://localhost:8000")
