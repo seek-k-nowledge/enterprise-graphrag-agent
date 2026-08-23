@@ -147,6 +147,10 @@ Answer with confidence and completeness:"""
             response = self.llm.invoke([HumanMessage(content=prompt)])
             answer_text = response.content
 
+            # Log which provider served this call
+            if hasattr(self.llm, 'last_provider'):
+                logger.info(f"Synthesis: LLM call served by {self.llm.last_provider}")
+
             # Extract numbered citation indices [1], [2], etc.
             citations_used = set()
             for match in re.finditer(r'\[(\d+)\]', answer_text):

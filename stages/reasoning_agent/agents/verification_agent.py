@@ -173,6 +173,11 @@ List issues found (one per line), or "VALID" if no issues."""
 
             response = self.llm.invoke([HumanMessage(content=prompt)])
             result_text = response.content.lower()
+
+            # Log which provider served this call
+            if hasattr(self.llm, 'last_provider'):
+                logger.info(f"Verification: LLM call served by {self.llm.last_provider}")
+
             if "valid" not in result_text:
                 # Extract issues
                 for line in result_text.split("\n"):

@@ -34,6 +34,7 @@ class FalloverLLM(BaseChatModel):
 
     If the primary LLM fails during invoke/generate (e.g., 402, 429),
     automatically retries with a fallback LLM instead.
+    Tracks which provider served each call for logging.
     """
 
     def __init__(
@@ -48,32 +49,45 @@ class FalloverLLM(BaseChatModel):
         self.fallback = fallback
         self.model = model
         self.temperature = temperature
+        self.last_provider = None  # Track which provider served the last call
 
     @property
     def _llm_type(self) -> str:
         return f"fallover_{self.primary._llm_type}"
 
     def _generate(self, messages: list[BaseMessage], **kwargs: Any) -> Any:
-        """Try primary, fall back on error."""
+        """Try primary, fall back on error. Log which provider served the call."""
         try:
-            return self.primary._generate(messages, **kwargs)
+            result = self.primary._generate(messages, **kwargs)
+            self.last_provider = "cerebras"
+            logger.debug("LLM call served by: cerebras")
+            return result
         except Exception as e:
             logger.warning(
                 f"Primary LLM failed during call: {e}. "
                 f"Falling back to {self.fallback._llm_type}"
             )
-            return self.fallback._generate(messages, **kwargs)
+            result = self.fallback._generate(messages, **kwargs)
+            self.last_provider = "groq"
+            logger.warning("LLM call served by: groq (fallback)")
+            return result
 
     async def _agenerate(self, messages: list[BaseMessage], **kwargs: Any) -> Any:
-        """Async version: try primary, fall back on error."""
+        """Async version: try primary, fall back on error. Log which provider served the call."""
         try:
-            return await self.primary._agenerate(messages, **kwargs)
+            result = await self.primary._agenerate(messages, **kwargs)
+            self.last_provider = "cerebras"
+            logger.debug("LLM call served by: cerebras")
+            return result
         except Exception as e:
             logger.warning(
                 f"Primary LLM failed during async call: {e}. "
                 f"Falling back to {self.fallback._llm_type}"
             )
-            return await self.fallback._agenerate(messages, **kwargs)
+            result = await self.fallback._agenerate(messages, **kwargs)
+            self.last_provider = "groq"
+            logger.warning("LLM call served by: groq (fallback)")
+            return result
 
 
 # Model name mapping per provider
