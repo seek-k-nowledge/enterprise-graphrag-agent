@@ -242,7 +242,9 @@ Answer with confidence and completeness:"""
         for chunk in sorted_chunks:
             if idx > num_citations:
                 break
-            snippet = chunk.text[:80] + "..." if len(chunk.text) > 80 else chunk.text
+            # Replace newlines with spaces for readable reference display
+            clean_text = chunk.text.replace('\n', ' ')
+            snippet = clean_text[:80] + "..." if len(clean_text) > 80 else clean_text
             citation_map[idx] = ("chunk", chunk.id, snippet)
             idx += 1
 
