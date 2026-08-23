@@ -72,6 +72,8 @@ def process_ingestion(job_id: str, ingest_req: IngestionRequest) -> None:
             relation_types=["WORKS_AT", "LOCATED_IN", "CREATED", "RELATED_TO"],
             # Uses optimized defaults: chunk_size=400, chunk_overlap=75
             # (defined in stages/extraction/extractor.py DEFAULT_CHUNK_SIZE/OVERLAP)
+            llm_provider=ingest_req.llm_provider,
+            llm_api_key=ingest_req.llm_api_key,
         )
 
         extraction_result = extract_document(

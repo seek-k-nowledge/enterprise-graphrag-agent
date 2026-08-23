@@ -124,6 +124,12 @@ class ExtractionConfig(BaseModel):
     chunk_overlap: int = Field(default=DEFAULT_CHUNK_OVERLAP, ge=0)
     max_concurrency: int = Field(default=4, gt=0)
     schema_version: str | None = None
+    llm_provider: str | None = Field(
+        default=None, description="LLM provider override (cerebras, groq, anthropic)"
+    )
+    llm_api_key: str | None = Field(
+        default=None, description="API key for the specified provider"
+    )
 
     def model_post_init(self, _context: object) -> None:
         if self.chunk_overlap >= self.chunk_size:
@@ -382,6 +388,8 @@ def build_extractor(config: ExtractionConfig) -> Runnable:
     model: BaseChatModel = get_llm(
         model=config.model,
         temperature=config.temperature,
+        provider=config.llm_provider,
+        api_key_override=config.llm_api_key,
     )
 
     prompt = ChatPromptTemplate.from_messages(
