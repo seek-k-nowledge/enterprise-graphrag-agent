@@ -311,11 +311,6 @@ Answer with confidence and completeness:"""
                 key=lambda c: c.similarity_score if c.similarity_score else 0.0,
                 reverse=True
             )
-            # [DEBUG] Log chunks being passed to LLM
-            logger.info(f"[DEBUG-CONTEXT] Total chunks in subgraph: {len(subgraph.chunks)}")
-            for i, chunk in enumerate(sorted_chunks[:15], 1):
-                score = chunk.similarity_score if chunk.similarity_score else 0.0
-                logger.info(f"[DEBUG-CONTEXT] [{i}] id={chunk.id}, score={score}, contains_1.43={'1.43' in chunk.text}, contains_19940={'19,940' in chunk.text or '19940' in chunk.text}")
 
             for i, chunk in enumerate(sorted_chunks[:15], 1):
                 # Increased from 100 to 350 characters to preserve full sentences and context
