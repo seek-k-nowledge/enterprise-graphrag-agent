@@ -4,9 +4,27 @@ from neo4j import GraphDatabase
 from pyvis.network import Network
 import streamlit.components.v1 as components
 import io
+import os
 
 st.set_page_config(page_title="Enterprise GraphRAG", page_icon="🕸️", layout="wide")
 st.title("🕸️ Enterprise GraphRAG Assistant")
+
+# Check if a default provider is configured and working
+@st.cache_data(ttl=300)
+def check_default_provider():
+    """Check if .env has a working default provider (Groq, Cerebras, or Anthropic)."""
+    providers_to_check = [
+        ("groq", os.getenv("GROQ_API_KEY")),
+        ("cerebras", os.getenv("CEREBRAS_API_KEY")),
+        ("anthropic", os.getenv("ANTHROPIC_API_KEY")),
+    ]
+
+    for provider_name, api_key in providers_to_check:
+        if api_key:
+            # Found a key in env, assume it's configured
+            return True, provider_name
+
+    return False, None
 
 # Sidebar - Document Ingestion
 with st.sidebar:
@@ -184,7 +202,13 @@ with st.sidebar:
     if st.session_state.llm_provider:
         st.caption(f"Using: {selected_label}")
 
-# Check if provider configured
+# Check if provider configured (session state OR .env default)
+has_default, default_provider = check_default_provider()
+if has_default and not st.session_state.llm_provider:
+    # Auto-load from env on first page load
+    st.session_state.llm_provider = default_provider
+    st.session_state.llm_api_key = os.getenv(f"{default_provider.upper()}_API_KEY")
+
 provider_configured = bool(st.session_state.llm_api_key and st.session_state.llm_provider)
 
 # Main Layout Tabs
