@@ -152,6 +152,7 @@ def get_llm(
     model: str = "gpt-oss-120b",
     temperature: float = 0.0,
     provider: Optional[str] = None,
+    api_key_override: Optional[str] = None,
 ) -> BaseChatModel:
     """
     Get an LLM from the primary (Cerebras) or fallback (Groq) provider.
@@ -167,8 +168,9 @@ def get_llm(
     Args:
         model: Model ID (e.g., "gpt-oss-120b")
         temperature: Temperature for model sampling
-        provider: Force a specific provider ("cerebras", "groq", or "anthropic"),
+        provider: Force a specific provider ("cerebras", "groq", "anthropic", or custom),
                   or None for automatic (uses DEFAULT_LLM_PROVIDER or defaults)
+        api_key_override: API key to use instead of env var (takes precedence over env)
 
     Returns:
         Initialized BaseChatModel instance (possibly wrapped with call-time fallover)
@@ -187,7 +189,7 @@ def get_llm(
     # Anthropic: explicit only, no fallback
     if provider == "anthropic":
         try:
-            llm = _create_anthropic_client(model, temperature)
+            llm = _create_anthropic_client(model, temperature, api_key_override)
             logger.info(f"Using Anthropic provider for {model}")
             return llm
         except Exception as e:
@@ -202,7 +204,7 @@ def get_llm(
 
         # Try primary provider first (Cerebras)
         try:
-            primary = _create_cerebras_client(model, temperature)
+            primary = _create_cerebras_client(model, temperature, api_key_override)
             logger.info(f"Initialized Cerebras provider for call-time fallover")
         except Exception as e:
             error_msg = f"Cerebras initialization failed: {e}"
@@ -211,7 +213,7 @@ def get_llm(
 
         # Try fallback provider (Groq)
         try:
-            fallback = _create_groq_client(model, temperature)
+            fallback = _create_groq_client(model, temperature, api_key_override)
             logger.info(f"Initialized Groq provider for call-time fallover")
         except Exception as e:
             error_msg = f"Groq initialization failed: {e}"
@@ -243,7 +245,7 @@ def get_llm(
     # Explicit provider selection (cerebras or groq): no fallover
     if provider == "cerebras":
         try:
-            llm = _create_cerebras_client(model, temperature)
+            llm = _create_cerebras_client(model, temperature, api_key_override)
             logger.info(f"Using Cerebras provider for {model}")
             return llm
         except Exception as e:
@@ -251,7 +253,7 @@ def get_llm(
 
     if provider == "groq":
         try:
-            llm = _create_groq_client(model, temperature)
+            llm = _create_groq_client(model, temperature, api_key_override)
             logger.info(f"Using Groq provider for {model}")
             return llm
         except Exception as e:
@@ -261,13 +263,14 @@ def get_llm(
     raise RuntimeError(f"Unknown provider: {provider}")
 
 
-def _create_cerebras_client(model: str, temperature: float) -> BaseChatModel:
+def _create_cerebras_client(model: str, temperature: float, api_key_override: Optional[str] = None) -> BaseChatModel:
     """
     Create a Cerebras LLM client (OpenAI-compatible API).
 
     Args:
         model: Generic model name (translated to Cerebras format)
         temperature: Temperature
+        api_key_override: API key to use instead of env var (takes precedence)
 
     Returns:
         ChatOpenAI instance pointing to Cerebras API
@@ -276,7 +279,7 @@ def _create_cerebras_client(model: str, temperature: float) -> BaseChatModel:
         ImportError if langchain_openai not installed
         RuntimeError if CEREBRAS_API_KEY not set or model not found
     """
-    api_key = os.getenv("CEREBRAS_API_KEY")
+    api_key = api_key_override or os.getenv("CEREBRAS_API_KEY")
     if not api_key:
         raise RuntimeError("CEREBRAS_API_KEY not set in environment")
 
@@ -302,13 +305,14 @@ def _create_cerebras_client(model: str, temperature: float) -> BaseChatModel:
         raise
 
 
-def _create_groq_client(model: str, temperature: float) -> BaseChatModel:
+def _create_groq_client(model: str, temperature: float, api_key_override: Optional[str] = None) -> BaseChatModel:
     """
     Create a Groq LLM client.
 
     Args:
         model: Generic model name (translated to Groq format)
         temperature: Temperature
+        api_key_override: API key to use instead of env var (takes precedence)
 
     Returns:
         ChatGroq instance
@@ -317,7 +321,7 @@ def _create_groq_client(model: str, temperature: float) -> BaseChatModel:
         ImportError if langchain_groq not installed
         RuntimeError if GROQ_API_KEY not set
     """
-    api_key = os.getenv("GROQ_API_KEY")
+    api_key = api_key_override or os.getenv("GROQ_API_KEY")
     if not api_key:
         raise RuntimeError("GROQ_API_KEY not set in environment")
 
@@ -341,13 +345,14 @@ def _create_groq_client(model: str, temperature: float) -> BaseChatModel:
         raise
 
 
-def _create_anthropic_client(model: str, temperature: float) -> BaseChatModel:
+def _create_anthropic_client(model: str, temperature: float, api_key_override: Optional[str] = None) -> BaseChatModel:
     """
     Create an Anthropic LLM client (Claude models).
 
     Args:
         model: Claude model ID (e.g., "claude-haiku-4-5-20251001")
         temperature: Temperature
+        api_key_override: API key to use instead of env var (takes precedence)
 
     Returns:
         ChatAnthropic instance
@@ -356,7 +361,7 @@ def _create_anthropic_client(model: str, temperature: float) -> BaseChatModel:
         ImportError if langchain_anthropic not installed
         RuntimeError if ANTHROPIC_API_KEY not set
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = api_key_override or os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY not set in environment")
 
