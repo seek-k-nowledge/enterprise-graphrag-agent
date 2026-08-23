@@ -9,6 +9,49 @@ import os
 st.set_page_config(page_title="Enterprise GraphRAG", page_icon="🕸️", layout="wide")
 st.title("🕸️ Enterprise GraphRAG Assistant")
 
+# Lightweight provider validation (just confirm API key works, don't run full pipeline)
+def validate_provider_key(provider: str, api_key: str) -> tuple[bool, str]:
+    """
+    Lightweight validation: send 1-token request to confirm API key works.
+    Returns (success: bool, message: str)
+    """
+    try:
+        if provider == "groq":
+            from langchain_groq import ChatGroq
+            llm = ChatGroq(model_name="openai/gpt-oss-120b", groq_api_key=api_key, temperature=0.0)
+            # Single token completion to validate key
+            llm.invoke([{"role": "user", "content": "x"}])
+            return True, "✓ Groq API key is valid"
+
+        elif provider == "cerebras":
+            from langchain_openai import ChatOpenAI
+            llm = ChatOpenAI(
+                model_name="gpt-oss-120b",
+                api_key=api_key,
+                base_url="https://api.cerebras.ai/v1",
+                temperature=0.0,
+            )
+            llm.invoke([{"role": "user", "content": "x"}])
+            return True, "✓ Cerebras API key is valid"
+
+        elif provider == "anthropic":
+            from langchain_anthropic import ChatAnthropic
+            llm = ChatAnthropic(model="claude-haiku-4-5-20251001", api_key=api_key, temperature=0.0)
+            llm.invoke([{"role": "user", "content": "x"}])
+            return True, "✓ Anthropic API key is valid"
+
+        else:
+            return False, f"Unknown provider: {provider}"
+
+    except Exception as e:
+        error_msg = str(e)
+        if "401" in error_msg or "unauthorized" in error_msg.lower():
+            return False, f"❌ {provider.capitalize()} API key is invalid or expired"
+        elif "429" in error_msg:
+            return False, f"⚠️ {provider.capitalize()} rate limit hit (try again in a moment)"
+        else:
+            return False, f"❌ Connection failed: {error_msg[:100]}"
+
 # Check if a default provider is configured and working
 @st.cache_data(ttl=300)
 def check_default_provider():
@@ -174,22 +217,12 @@ with st.sidebar:
     with col1:
         if st.button("Test Connection", key="test_conn_btn"):
             if api_key and selected_provider:
-                try:
-                    res = requests.post(
-                        "http://localhost:8000/api/v1/query",
-                        json={
-                            "query": "test connection",
-                            "llm_provider": selected_provider,
-                            "llm_api_key": api_key,
-                        },
-                        timeout=10
-                    )
-                    if res.status_code == 200:
-                        st.success("✓ Connected!")
+                with st.spinner("Testing API key..."):
+                    success, message = validate_provider_key(selected_provider, api_key)
+                    if success:
+                        st.success(message)
                     else:
-                        st.error(f"Error: {res.json().get('detail', res.text)}")
-                except Exception as e:
-                    st.error(f"Connection failed: {str(e)}")
+                        st.error(message)
             else:
                 st.warning("Select provider and enter API key")
 
