@@ -45,11 +45,35 @@ class FalloverLLM(BaseChatModel):
         temperature: float,
     ):
         super().__init__()
-        self.primary = primary
-        self.fallback = fallback
-        self.model = model
-        self.temperature = temperature
-        self.last_provider = None  # Track which provider served the last call
+        self._primary = primary
+        self._fallback = fallback
+        self._model = model
+        self._temperature = temperature
+        self._last_provider = None  # Track which provider served the last call
+
+    @property
+    def primary(self):
+        return self._primary
+
+    @property
+    def fallback(self):
+        return self._fallback
+
+    @property
+    def model(self):
+        return self._model
+
+    @property
+    def temperature(self):
+        return self._temperature
+
+    @property
+    def last_provider(self):
+        return self._last_provider
+
+    @last_provider.setter
+    def last_provider(self, value):
+        self._last_provider = value
 
     @property
     def _llm_type(self) -> str:
