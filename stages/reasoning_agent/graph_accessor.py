@@ -385,9 +385,13 @@ class GraphAccessor:
                 read_only=True,
             )
 
-            chunks = [
-                self._chunk_from_neo4j(r.get("c")) for r in result.records
-            ]
+            chunks = []
+            for r in result.records:
+                chunk = self._chunk_from_neo4j(r.get("c"))
+                similarity = r.get("similarity")
+                if similarity is not None:
+                    chunk.similarity_score = float(similarity)
+                chunks.append(chunk)
 
             if self.enable_caching:
                 self._cache_result(cache_key, chunks)

@@ -89,6 +89,9 @@ class GraphChunk(BaseModel):
     embedding: Optional[list[float]] = Field(
         default=None, description="Vector embedding (if present)"
     )
+    similarity_score: Optional[float] = Field(
+        default=None, description="Cosine similarity score (for ranked retrieval)"
+    )
 
 
 class Subgraph(BaseModel):
