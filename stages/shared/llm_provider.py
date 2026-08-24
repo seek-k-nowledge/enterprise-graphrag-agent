@@ -24,8 +24,54 @@ from typing import Optional, Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage, AIMessage
+from langchain_core.runnables import Runnable, RunnableConfig
 
 logger = logging.getLogger(__name__)
+
+
+class StructuredOutputFallover(Runnable):
+    """Wrapper Runnable for structured output with call-time fallover.
+
+    Tries primary model's structured output first, falls back to fallback
+    model's structured output on error, mirroring the same pattern as _generate.
+    """
+
+    def __init__(self, primary_runnable: Runnable, fallback_runnable: Runnable, llm_wrapper: 'FalloverLLM'):
+        self.primary_runnable = primary_runnable
+        self.fallback_runnable = fallback_runnable
+        self.llm_wrapper = llm_wrapper
+
+    def invoke(self, input: Any, config: Optional[RunnableConfig] = None) -> Any:
+        try:
+            result = self.primary_runnable.invoke(input, config)
+            self.llm_wrapper.last_provider = "primary"
+            logger.debug("Structured output call served by: primary")
+            return result
+        except Exception as e:
+            logger.warning(
+                f"Primary structured output failed: {e}. "
+                f"Falling back to fallback model"
+            )
+            result = self.fallback_runnable.invoke(input, config)
+            self.llm_wrapper.last_provider = "fallback"
+            logger.warning("Structured output call served by: fallback (fallover)")
+            return result
+
+    async def ainvoke(self, input: Any, config: Optional[RunnableConfig] = None) -> Any:
+        try:
+            result = await self.primary_runnable.ainvoke(input, config)
+            self.llm_wrapper.last_provider = "primary"
+            logger.debug("Async structured output call served by: primary")
+            return result
+        except Exception as e:
+            logger.warning(
+                f"Primary async structured output failed: {e}. "
+                f"Falling back to fallback model"
+            )
+            result = await self.fallback_runnable.ainvoke(input, config)
+            self.llm_wrapper.last_provider = "fallback"
+            logger.warning("Async structured output call served by: fallback (fallover)")
+            return result
 
 
 class FalloverLLM(BaseChatModel):
@@ -113,6 +159,24 @@ class FalloverLLM(BaseChatModel):
             logger.warning("LLM call served by: groq (fallback)")
             return result
 
+    def with_structured_output(self, schema: Any, **kwargs: Any) -> StructuredOutputFallover:
+        """Return a Runnable that supports structured output with call-time fallover.
+
+        When the returned Runnable is invoked, it tries the primary model's
+        structured output first and falls back to the fallback model if the
+        primary fails (e.g., due to rate limits, API errors).
+
+        Args:
+            schema: JSON schema or Pydantic model for structured output
+            **kwargs: Additional arguments passed to underlying models
+
+        Returns:
+            StructuredOutputFallover wrapper that implements call-time fallover
+        """
+        primary_runnable = self.primary.with_structured_output(schema, **kwargs)
+        fallback_runnable = self.fallback.with_structured_output(schema, **kwargs)
+        return StructuredOutputFallover(primary_runnable, fallback_runnable, self)
+
 
 # Model name mapping per provider
 MODEL_NAMES = {
@@ -186,12 +250,21 @@ def get_llm(
         if provider:
             logger.info(f"Using DEFAULT_LLM_PROVIDER={provider}")
 
-    # Anthropic: explicit only, no fallback
+    # Anthropic: explicit selection, but with Groq fallback for rate limits
     if provider == "anthropic":
         try:
-            llm = _create_anthropic_client(model, temperature, api_key_override)
+            primary = _create_anthropic_client(model, temperature, api_key_override)
             logger.info(f"Using Anthropic provider for {model}")
-            return llm
+
+            # Add Groq fallback in case of rate limits (429) or other failures
+            try:
+                fallback = _create_groq_client(model, temperature, api_key_override)
+                llm = FalloverLLM(primary, fallback, model, temperature)
+                logger.info("Anthropic + Groq fallback enabled (for rate limit handling)")
+                return llm
+            except Exception as groq_error:
+                logger.warning(f"Groq fallback not available: {groq_error}. Using Anthropic only.")
+                return primary
         except Exception as e:
             error_msg = f"Anthropic initialization failed: {e}"
             logger.warning(error_msg)
