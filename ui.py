@@ -175,9 +175,9 @@ with st.sidebar:
 
                                 # Rate limit protection: spread chunks over time to stay under
                                 # provider TPM (tokens-per-minute) limits. Groq free tier: 8000 TPM.
-                                # 56 chunks * 150 tokens ≈ 8400 tokens, so brief delay keeps us safe.
+                                # 56 chunks * 150 tokens ≈ 8400 tokens, so 8s delay keeps us safe.
                                 if i < len(chunks) - 1:
-                                    time.sleep(1.5)
+                                    time.sleep(8)
 
                             st.success(f"✅ Ingestion complete: {ingested} chunks processed")
                             if failed > 0:
