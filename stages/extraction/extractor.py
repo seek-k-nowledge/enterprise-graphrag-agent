@@ -237,41 +237,51 @@ def _parse_json_fallback(output: str) -> ChunkExtraction | None:
 
     # Try to extract JSON from the output (handles markdown code blocks, etc)
     try:
-        json_match = re.search(r'\{.*\}', output, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(0)
-            parsed = json.loads(json_str)
+        # Find all potential JSON objects and try each one
+        # Use a decoder that can find valid JSON boundaries
+        decoder = json.JSONDecoder()
+        idx = 0
+        while idx < len(output):
+            try:
+                obj, end_idx = decoder.raw_decode(output, idx)
+                parsed = obj
 
-            # Fix: handle fields that come back as JSON-encoded strings
-            # Some models return {"entities": "[{...}]"} instead of {"entities": [{...}]}
-            if isinstance(parsed, dict):
-                for field_name in ['entities', 'relations']:
-                    if field_name in parsed:
-                        field_value = parsed[field_name]
-                        # If it's a string that looks like JSON, try to parse it
-                        if isinstance(field_value, str):
-                            try:
-                                parsed[field_name] = json.loads(field_value)
-                                logger.debug(
-                                    f"Decoded JSON-encoded {field_name} field from string"
-                                )
-                            except (json.JSONDecodeError, ValueError):
-                                # Not valid JSON, leave as-is and let validation fail
-                                pass
+                # Fix: handle fields that come back as JSON-encoded strings
+                # Some models return {"entities": "[{...}]"} instead of {"entities": [{...}]}
+                if isinstance(parsed, dict):
+                    for field_name in ['entities', 'relations']:
+                        if field_name in parsed:
+                            field_value = parsed[field_name]
+                            # If it's a string that looks like JSON, try to parse it
+                            if isinstance(field_value, str):
+                                try:
+                                    parsed[field_name] = json.loads(field_value)
+                                    logger.debug(
+                                        f"Decoded JSON-encoded {field_name} field from string"
+                                    )
+                                except (json.JSONDecodeError, ValueError):
+                                    # Not valid JSON, leave as-is and let validation fail
+                                    pass
 
-            return ChunkExtraction.model_validate(parsed)
+                return ChunkExtraction.model_validate(parsed)
+            except (json.JSONDecodeError, ValueError):
+                # Move past this invalid JSON and try next potential object
+                idx = end_idx + 1 if 'end_idx' in locals() else idx + 1
+                continue
+            except Exception as e:
+                # Validation or other error: log and try next potential object
+                error_msg = str(e)
+                if "validation error" in error_msg.lower():
+                    parsed_sample = str(parsed)[:200] if 'parsed' in locals() else "unknown"
+                    logger.debug(
+                        f"JSON validation failed for extracted object: {error_msg[:100]}... "
+                        f"Sample: {parsed_sample}"
+                    )
+                idx = end_idx + 1 if 'end_idx' in locals() else idx + 1
+                continue
     except Exception as e:
-        # Log validation errors with context to help debug problematic chunks
-        error_msg = str(e)
-        if "validation error" in error_msg.lower():
-            # Include first 200 chars of parsed JSON to identify the problematic field
-            parsed_sample = str(parsed)[:200] if 'parsed' in locals() else "unknown"
-            logger.warning(
-                f"JSON validation failed: {error_msg[:100]}... "
-                f"Parsed sample: {parsed_sample}"
-            )
-        else:
-            logger.debug(f"JSON fallback parsing failed: {e}")
+        # Outer exception during decoding attempt
+        logger.debug(f"JSON fallback parsing failed: {e}")
 
     return None
 

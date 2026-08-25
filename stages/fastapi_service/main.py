@@ -14,9 +14,17 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import sys
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Configure logging to capture all extraction errors
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    stream=sys.stdout,
+)
 
 from .schemas import (
     QueryRequest,
@@ -133,9 +141,12 @@ def process_ingestion(job_id: str, ingest_req: IngestionRequest) -> None:
         logger.info(f"Ingestion completed: {job_id}")
 
     except Exception as e:
-        logger.exception(f"Ingestion processing failed for {job_id}: {e}")
+        error_msg = str(e)
+        logger.exception(f"Ingestion processing failed for {job_id}: {error_msg}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        logger.error(f"Full traceback above ^^")
         job.status = "failed"
-        job.error = str(e)
+        job.error = error_msg
 
 
 # ─────────────────────────────────────────────────────────────────────────────

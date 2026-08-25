@@ -55,7 +55,12 @@ def validate_provider_key(provider: str, api_key: str) -> tuple[bool, str]:
 # Check if a default provider is configured and working
 @st.cache_data(ttl=300)
 def check_default_provider():
-    """Check if .env has a working default provider (Groq, Cerebras, or Anthropic)."""
+    """
+    Check if .env has a working default provider (Groq, Cerebras, or Anthropic).
+
+    Validates each key with a lightweight 1-token test before confirming it works.
+    Returns (is_working: bool, provider_name: str | None)
+    """
     providers_to_check = [
         ("groq", os.getenv("GROQ_API_KEY")),
         ("cerebras", os.getenv("CEREBRAS_API_KEY")),
@@ -64,8 +69,10 @@ def check_default_provider():
 
     for provider_name, api_key in providers_to_check:
         if api_key:
-            # Found a key in env, assume it's configured
-            return True, provider_name
+            # Found a key in env, validate it works
+            success, _ = validate_provider_key(provider_name, api_key)
+            if success:
+                return True, provider_name
 
     return False, None
 
@@ -152,7 +159,9 @@ with st.sidebar:
                                         json={
                                             "source_id": f"{pdf_doc_id}_chunk_{i}",
                                             "document_text": chunk,
-                                            "priority": "normal"
+                                            "priority": "normal",
+                                            "llm_provider": st.session_state.llm_provider,
+                                            "llm_api_key": st.session_state.llm_api_key,
                                         },
                                         timeout=10
                                     )
@@ -236,13 +245,19 @@ with st.sidebar:
         st.caption(f"Using: {selected_label}")
 
 # Check if provider configured (session state OR .env default)
+# Also validate that any .env provider actually works before using it
 has_default, default_provider = check_default_provider()
 if has_default and not st.session_state.llm_provider:
     # Auto-load from env on first page load
     st.session_state.llm_provider = default_provider
     st.session_state.llm_api_key = os.getenv(f"{default_provider.upper()}_API_KEY")
 
-provider_configured = bool(st.session_state.llm_api_key and st.session_state.llm_provider)
+# Provider is configured if either:
+# 1. User set it in session state with a valid key, OR
+# 2. A working provider is configured in .env
+provider_configured = (
+    bool(st.session_state.llm_api_key and st.session_state.llm_provider) or has_default
+)
 
 # Main Layout Tabs
 tab1, tab2 = st.tabs(["💬 Chat Assistant", "🕸️ Interactive Graph Viewer"])
