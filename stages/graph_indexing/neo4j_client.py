@@ -215,9 +215,14 @@ class Neo4jClient:
         last_error = None
         for attempt in range(1, self.max_retries + 1):
             try:
-                with self.session(read_only=read_only) as session:
-                    result = session.run(cypher, parameters)
-                    return QueryResult.from_neo4j_result(result)
+                if read_only:
+                    with self.session(read_only=True) as session:
+                        result = session.run(cypher, parameters)
+                        return QueryResult.from_neo4j_result(result)
+                else:
+                    with self.write_transaction() as tx:
+                        result = tx.run(cypher, parameters)
+                        return QueryResult.from_neo4j_result(result)
             except TransientError as e:
                 last_error = e
                 logger.warning(

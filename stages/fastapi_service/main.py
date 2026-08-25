@@ -75,11 +75,9 @@ def process_ingestion(job_id: str, ingest_req: IngestionRequest) -> None:
         from stages.extraction.extractor import extract_document, ExtractionConfig
 
         config = ExtractionConfig(
-            model="openai/gpt-oss-120b",
+            model="claude-haiku-4-5-20251001" if ingest_req.llm_provider == "anthropic" else "gpt-oss-120b",
             entity_types=["Person", "Organization", "Location", "Product", "Event"],
             relation_types=["WORKS_AT", "LOCATED_IN", "CREATED", "RELATED_TO"],
-            # Uses optimized defaults: chunk_size=400, chunk_overlap=75
-            # (defined in stages/extraction/extractor.py DEFAULT_CHUNK_SIZE/OVERLAP)
             llm_provider=ingest_req.llm_provider,
             llm_api_key=ingest_req.llm_api_key,
         )

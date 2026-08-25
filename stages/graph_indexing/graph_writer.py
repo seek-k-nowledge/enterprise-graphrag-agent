@@ -168,6 +168,11 @@ class GraphWriter:
             d.ingested_at = $ingested_at,
             d.extraction_model = $extraction_model,
             d.schema_version = $schema_version
+        ON MATCH SET
+            d.name = $doc_name,
+            d.uri = $uri,
+            d.ingested_at = $ingested_at,
+            d.extraction_model = $extraction_model
         RETURN elementId(d) as id, true as created
         """
 
