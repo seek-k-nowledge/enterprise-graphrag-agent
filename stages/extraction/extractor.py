@@ -346,8 +346,8 @@ def _extraction_with_retry(chain: Runnable, max_retries: int = 5) -> Runnable:
                 last_error = e
                 error_str = str(e)
 
-                # Check for 429 rate limit error
-                if "429" in error_str or "rate" in error_str.lower():
+                # Check for 429 rate limit error or Groq's wrapped 400 rate-limit errors
+                if "429" in error_str or "rate limit" in error_str.lower() or "please try again in" in error_str.lower():
                     wait_seconds = None
 
                     # Try to extract retry-after from "Please try again in X.XXs" (Groq format)
