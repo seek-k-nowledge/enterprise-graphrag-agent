@@ -5,6 +5,7 @@ from pyvis.network import Network
 import streamlit.components.v1 as components
 import io
 import os
+import time
 
 st.set_page_config(page_title="Enterprise GraphRAG", page_icon="🕸️", layout="wide")
 st.title("🕸️ Enterprise GraphRAG Assistant")
@@ -171,6 +172,12 @@ with st.sidebar:
                                         failed += 1
                                 except Exception as e:
                                     failed += 1
+
+                                # Rate limit protection: spread chunks over time to stay under
+                                # provider TPM (tokens-per-minute) limits. Groq free tier: 8000 TPM.
+                                # 56 chunks * 150 tokens ≈ 8400 tokens, so brief delay keeps us safe.
+                                if i < len(chunks) - 1:
+                                    time.sleep(1.5)
 
                             st.success(f"✅ Ingestion complete: {ingested} chunks processed")
                             if failed > 0:
