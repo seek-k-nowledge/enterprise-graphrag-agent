@@ -17,6 +17,7 @@ what the text appears to say, with enough provenance for stage 02 to adjudicate.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from datetime import datetime
 from typing import Annotated
@@ -346,3 +347,23 @@ class ChunkExtraction(BaseModel):
             "Empty list if the text asserts none."
         ),
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_stringified_json(cls, data):
+        """Deserialize JSON-stringified fields from LLM tool calls.
+
+        Some LLMs (like Claude) may return stringified JSON for list/dict fields
+        instead of native structures. This validator handles that transparently.
+        """
+        if not isinstance(data, dict):
+            return data
+
+        for field_name in ("entities", "relations"):
+            if field_name in data and isinstance(data[field_name], str):
+                try:
+                    data[field_name] = json.loads(data[field_name])
+                except (json.JSONDecodeError, ValueError):
+                    pass
+
+        return data
