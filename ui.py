@@ -91,7 +91,7 @@ with st.sidebar:
                 st.error("Document content cannot be empty")
             else:
                 res = requests.post(
-                    "http://localhost:8000/api/v1/ingest",
+                    "http://fastapi:8000/api/v1/ingest",
                     json={
                         "source_id": doc_id,
                         "document_text": doc_text,
@@ -155,7 +155,7 @@ with st.sidebar:
                             for i, chunk in enumerate(chunks):
                                 try:
                                     res = requests.post(
-                                        "http://localhost:8000/api/v1/ingest",
+                                        "http://fastapi:8000/api/v1/ingest",
                                         json={
                                             "source_id": f"{pdf_doc_id}_chunk_{i}",
                                             "document_text": chunk,
@@ -289,7 +289,7 @@ with tab1:
 
         with st.spinner("Searching graph & synthesizing answer..."):
             res = requests.post(
-                "http://localhost:8000/api/v1/query",
+                "http://fastapi:8000/api/v1/query",
                 json={
                     "query": prompt,
                     "llm_provider": st.session_state.llm_provider,
@@ -313,7 +313,7 @@ with tab2:
     if st.button("Refresh Graph View"):
         try:
             res = requests.get(
-                "http://localhost:8000/api/v1/graph",
+                "http://fastapi:8000/api/v1/graph",
                 params={"limit": graph_limit}
             )
             if res.status_code == 200:
