@@ -74,14 +74,21 @@ def process_ingestion(job_id: str, ingest_req: IngestionRequest) -> None:
         # Extract document
         from stages.extraction.extractor import extract_document, ExtractionConfig
 
+        provider = ingest_req.llm_provider or "groq"
+        if provider == "anthropic":
+            model_to_use = "claude-haiku-4-5-20251001"
+        elif provider == "cerebras":
+            model_to_use = "gpt-oss-120b"
+        else:
+            model_to_use = "openai/gpt-oss-120b"
+
         config = ExtractionConfig(
-            model="claude-haiku-4-5-20251001" if ingest_req.llm_provider == "anthropic" else "gpt-oss-120b",
+            model=model_to_use,
             entity_types=["Person", "Organization", "Location", "Product", "Event"],
             relation_types=["WORKS_AT", "LOCATED_IN", "CREATED", "RELATED_TO"],
-            llm_provider=ingest_req.llm_provider,
+            llm_provider=provider,
             llm_api_key=ingest_req.llm_api_key,
         )
-
         extraction_result = extract_document(
             text=ingest_req.document_text,
             uri=ingest_req.source_id,
