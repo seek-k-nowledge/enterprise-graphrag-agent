@@ -323,12 +323,14 @@ def _extraction_with_fallback(config: ExtractionConfig, model: BaseChatModel) ->
     return RunnableLambda(extraction_with_fallback)
 
 
-def _extraction_with_retry(chain: Runnable, max_retries: int = 3) -> Runnable:
+def _extraction_with_retry(chain: Runnable, max_retries: int = 5) -> Runnable:
     """
     Wrap extraction chain with retry logic for 429 rate limit errors.
 
-    On 429, extracts retry-after delay from error and waits before retrying.
-    Uses exponential backoff on subsequent retries.
+    On 429, extracts the actual retry-after delay from the error message
+    (e.g., "Please try again in 13.23s" from Groq) and waits that long
+    before retrying. Falls back to exponential backoff if no explicit
+    wait time is specified.
     """
     from langchain_core.runnables import RunnableLambda
 
@@ -346,21 +348,27 @@ def _extraction_with_retry(chain: Runnable, max_retries: int = 3) -> Runnable:
 
                 # Check for 429 rate limit error
                 if "429" in error_str or "rate" in error_str.lower():
-                    # Try to extract retry-after from error message
-                    retry_after_match = re.search(r'retry[_-]after["\']?\s*:\s*(\d+)', error_str, re.IGNORECASE)
-                    if retry_after_match:
-                        wait_seconds = float(retry_after_match.group(1))
-                    else:
-                        # Exponential backoff: 1s, 2s, 4s, 8s, ...
-                        wait_seconds = base_wait * (2 ** attempt)
+                    wait_seconds = None
 
-                    # Add small jitter buffer (500ms)
-                    wait_seconds += 0.5
+                    # Try to extract retry-after from "Please try again in X.XXs" (Groq format)
+                    groq_match = re.search(r'try again in\s+([\d.]+)\s*s', error_str, re.IGNORECASE)
+                    if groq_match:
+                        wait_seconds = float(groq_match.group(1))
+
+                    # Try standard retry-after header format
+                    if wait_seconds is None:
+                        retry_after_match = re.search(r'retry[_-]after["\']?\s*:\s*(\d+)', error_str, re.IGNORECASE)
+                        if retry_after_match:
+                            wait_seconds = float(retry_after_match.group(1))
+
+                    # Fall back to exponential backoff if no explicit wait time found
+                    if wait_seconds is None:
+                        wait_seconds = base_wait * (2 ** attempt)
 
                     if attempt < max_retries:
                         logger.warning(
                             f"Rate limit (429) on attempt {attempt + 1}/{max_retries + 1}. "
-                            f"Retrying in {wait_seconds:.1f}s. Error: {error_str[:100]}"
+                            f"Waiting {wait_seconds:.1f}s before retry. Error: {error_str[:100]}"
                         )
                         time.sleep(wait_seconds)
                         continue
