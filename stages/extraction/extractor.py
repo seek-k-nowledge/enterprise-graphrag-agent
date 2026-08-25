@@ -122,7 +122,7 @@ class ExtractionConfig(BaseModel):
     relation_types: list[str] = Field(min_length=1)
     chunk_size: int = Field(default=DEFAULT_CHUNK_SIZE, gt=0)
     chunk_overlap: int = Field(default=DEFAULT_CHUNK_OVERLAP, ge=0)
-    max_concurrency: int = Field(default=4, gt=0)
+    max_concurrency: int = Field(default=1, gt=0)
     schema_version: str | None = None
     llm_provider: str | None = Field(
         default=None, description="LLM provider override (cerebras, groq, anthropic)"
