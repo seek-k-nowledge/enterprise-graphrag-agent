@@ -106,7 +106,7 @@ class GraphWriter:
                 node_result.documents_updated += 1
 
             # Step 2: Write chunk nodes
-            chunk_created, chunk_updated = self._write_chunks(extraction_result.chunks, extraction_result.metadata.document_id)
+            chunk_created, chunk_updated = self._write_chunks(extraction_result.chunks, extraction_result.metadata.document_id, extraction_result.metadata.extraction_model)
             node_result.chunks_created += chunk_created
             node_result.chunks_updated += chunk_updated
 
@@ -196,7 +196,7 @@ class GraphWriter:
         logger.warning(f"Document write returned no result: {metadata.document_id}")
         return False
 
-    def _write_chunks(self, chunks: list[Chunk], document_id: str) -> tuple[int, int]:
+    def _write_chunks(self, chunks: list[Chunk], document_id: str, extraction_model: str | None = None) -> tuple[int, int]:
         """
         Write chunk nodes in batches.
 
@@ -219,7 +219,10 @@ class GraphWriter:
                     c.end_char = $end_char,
                     c.document_id = $document_id,
                     c.created = $created,
+                    c.extraction_model = $extraction_model,
                     c.embedding = []
+                ON MATCH SET
+                    c.extraction_model = $extraction_model
                 RETURN c, elementId(c) as chunk_id
                 """
                 params = {
@@ -229,6 +232,7 @@ class GraphWriter:
                     "start_char": chunk.start_char,
                     "end_char": chunk.end_char,
                     "document_id": document_id,
+                    "extraction_model": extraction_model,
                     "created": logging.root.handlers[0].formatter.formatTime(
                         logging.LogRecord(0, 0, "", 0, "", (), None)
                     ) if logging.root.handlers else None,
