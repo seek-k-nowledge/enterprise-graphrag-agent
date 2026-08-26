@@ -141,6 +141,15 @@ def process_ingestion(job_id: str, ingest_req: IngestionRequest) -> None:
             "entities_created": extraction_result.__dict__.get("entities", []),
             "chunks_created": len(extraction_result.chunks),
             "relations_created": extraction_result.__dict__.get("relations", []),
+            "extraction_errors": [
+                {
+                    "chunk_id": err.chunk_id,
+                    "stage": err.stage,
+                    "message": err.message,
+                    "payload": err.payload,
+                }
+                for err in extraction_result.errors
+            ],
         }
 
         logger.info(f"Ingestion completed: {job_id}")

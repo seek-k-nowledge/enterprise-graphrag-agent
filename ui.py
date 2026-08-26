@@ -7,6 +7,47 @@ import io
 import os
 import time
 
+# Friendly explanations for extraction quality checks
+FRIENDLY_ERROR_MESSAGES = {
+    "surface_form_check": {
+        "title": "🔍 A detail couldn't be double-checked",
+        "explanation": (
+            "The AI mentioned something here, but I couldn't find the "
+            "exact wording in your document to confirm it. Rather than "
+            "guess, I skipped it — this keeps your knowledge graph "
+            "accurate and trustworthy."
+        ),
+    },
+    "evidence_check": {
+        "title": "🔗 A connection couldn't be confirmed",
+        "explanation": (
+            "The AI thought two things in your document were related, "
+            "but couldn't find the exact supporting text. To avoid "
+            "adding a connection that might not be accurate, I left "
+            "it out."
+        ),
+    },
+    "relation_resolution": {
+        "title": "❓ Something didn't quite line up",
+        "explanation": (
+            "One of the connections the AI found didn't fully make "
+            "sense (it may have referenced something that wasn't "
+            "clearly identified), so it was left out to keep things "
+            "accurate."
+        ),
+    },
+}
+
+DEFAULT_FRIENDLY_MESSAGE = {
+    "title": "ℹ️ A detail was double-checked",
+    "explanation": (
+        "The AI found this detail, but when double-checked against your "
+        "document, something didn't quite match. To keep your knowledge "
+        "graph accurate, it was skipped — this is normal and nothing to "
+        "worry about."
+    ),
+}
+
 st.set_page_config(page_title="Enterprise GraphRAG", page_icon="🕸️", layout="wide")
 st.title("🕸️ Enterprise GraphRAG Assistant")
 
@@ -153,6 +194,7 @@ with st.sidebar:
                             # Ingest all chunks
                             ingested = 0
                             failed = 0
+                            chunk_errors = []
                             for i, chunk in enumerate(chunks):
                                 try:
                                     res = requests.post(
@@ -167,6 +209,20 @@ with st.sidebar:
                                         timeout=10
                                     )
                                     if res.status_code == 200:
+                                        job_data = res.json()
+                                        job_id = job_data.get("job_id")
+                                        # Poll job status and collect errors
+                                        if job_id:
+                                            job_status_res = requests.get(
+                                                f"http://fastapi:8000/api/v1/jobs/{job_id}",
+                                                timeout=10
+                                            )
+                                            if job_status_res.status_code == 200:
+                                                job_status = job_status_res.json()
+                                                if job_status.get("result", {}).get("extraction_errors"):
+                                                    chunk_errors.extend(
+                                                        job_status["result"]["extraction_errors"]
+                                                    )
                                         ingested += 1
                                     else:
                                         failed += 1
@@ -182,6 +238,23 @@ with st.sidebar:
                             st.success(f"✅ Ingestion complete: {ingested} chunks processed")
                             if failed > 0:
                                 st.warning(f"⚠️ {failed} chunks failed")
+                            if chunk_errors:
+                                with st.expander(f"ℹ️ {len(chunk_errors)} details were double-checked and skipped for accuracy"):
+                                    st.info(
+                                        "These are intentional quality checks—nothing went wrong. Your knowledge "
+                                        "graph is more accurate because of these checks. Click each item below to learn more."
+                                    )
+                                    for i, error in enumerate(chunk_errors):
+                                        stage = error.get("stage", "unknown")
+                                        friendly = FRIENDLY_ERROR_MESSAGES.get(stage, DEFAULT_FRIENDLY_MESSAGE)
+
+                                        with st.expander(f"{friendly['title']} — {error.get('chunk_id', 'chunk')}", expanded=False):
+                                            st.markdown(friendly["explanation"])
+                                            with st.expander("🔧 Show technical details", expanded=False):
+                                                st.caption(f"**Type:** {stage}")
+                                                st.caption(f"**Message:** {error.get('message', 'N/A')}")
+                                                if error.get("payload"):
+                                                    st.code(error['payload'], language="text")
 
                     except Exception as e:
                         st.error(f"❌ Processing failed: {e}")

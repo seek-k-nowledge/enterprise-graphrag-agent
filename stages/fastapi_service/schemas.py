@@ -55,6 +55,22 @@ class TokenUsageModel(BaseModel):
     total_tokens: int = Field(default=0)
 
 
+class ExtractionErrorModel(BaseModel):
+    """Extraction validation error from a chunk."""
+
+    chunk_id: Optional[str] = Field(
+        default=None, description="ID of the chunk that failed"
+    )
+    stage: str = Field(
+        default="unknown",
+        description="Where it failed: surface_form_check, evidence_check, relation_resolution, etc.",
+    )
+    message: str = Field(description="Human-readable rejection reason")
+    payload: Optional[str] = Field(
+        default=None, description="Offending value (truncated) for debugging"
+    )
+
+
 class RetrievalTraceModel(BaseModel):
     """Audit trail of retrieval and reasoning."""
 
