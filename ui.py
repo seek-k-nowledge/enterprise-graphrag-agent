@@ -335,6 +335,57 @@ a:hover {
     text-decoration: underline;
 }
 
+/* Chat Input */
+[data-testid="stChatInput"] {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    background-color: var(--bg-card) !important;
+    color: #e8eef5 !important;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+[data-testid="stChatInput"] textarea:focus {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 0 2px rgba(109, 140, 255, 0.2) !important;
+}
+
+/* Chat Input Send Button */
+[data-testid="stChatInput"] button {
+    background-color: var(--accent-blue) !important;
+    color: var(--bg-dark) !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+}
+
+[data-testid="stChatInput"] button:hover {
+    background-color: #8aa4ff !important;
+    box-shadow: 0 4px 12px rgba(109, 140, 255, 0.2) !important;
+}
+
+/* Chat Messages */
+[data-testid="stChatMessage"] {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 8px 0;
+    transition: all 0.2s ease;
+}
+
+[data-testid="stChatMessage"]:hover {
+    border-color: var(--accent-blue);
+    box-shadow: 0 4px 12px rgba(109, 140, 255, 0.1);
+}
+
+[data-testid="stChatMessage"] p {
+    color: #e8eef5;
+    margin: 0;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
     width: 8px;
@@ -726,11 +777,17 @@ with tab1:
 
 with tab2:
     st.header("Graph Explorer")
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        graph_limit = st.number_input("Limit", min_value=10, max_value=500, value=50, step=10)
 
-    if st.button("Refresh Graph View"):
+    # Graph controls
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        graph_limit = st.number_input("Nodes to display", min_value=10, max_value=500, value=50, step=10)
+    with col2:
+        show_edge_labels = st.checkbox("Show relationship labels", value=True)
+    with col3:
+        node_spacing = st.slider("Node spacing", min_value=0.5, max_value=2.0, value=1.0, step=0.1, help="Increase to reduce label overlap")
+
+    if st.button("🔄 Refresh Graph View"):
         try:
             res = requests.get(
                 "http://fastapi:8000/api/v1/graph",
@@ -744,28 +801,106 @@ with tab2:
                 if not nodes:
                     st.info("📊 No graph data available. Ingest documents to populate the graph.")
                 else:
-                    net = Network(height="500px", width="100%", bgcolor="#222222", font_color="white", directed=True)
+                    # Initialize network with dark theme
+                    net = Network(
+                        height="600px",
+                        width="100%",
+                        bgcolor="#0a0e17",  # Dark background
+                        font_color="#e8eef5",  # Light text
+                        directed=True
+                    )
+
+                    # Configure physics for better layout (reduced label overlap)
+                    physics_config = {
+                        "enabled": True,
+                        "stabilization": {
+                            "iterations": 200,
+                            "fit": True,
+                            "updateInterval": 50,
+                        },
+                        "barnesHut": {
+                            "gravitationalConstant": -26000,
+                            "centralGravity": 0.3,
+                            "springLength": 200 * node_spacing,  # Scale by user slider
+                            "springConstant": 0.05,
+                            "damping": 0.4,
+                            "avoidOverlap": 0.1,
+                        },
+                        "solver": "barnesHut",
+                    }
+
+                    net.set_options(f"""
+                    var options = {{
+                        "physics": {physics_config},
+                        "nodes": {{
+                            "color": {{
+                                "background": "#6d8cff",
+                                "highlight": {{"background": "#8aa4ff", "border": "#a1afc3"}},
+                                "hover": {{"background": "#8aa4ff"}},
+                                "border": "#22304a"
+                            }},
+                            "borderWidth": 1.5,
+                            "borderWidthSelected": 2.5,
+                            "font": {{
+                                "color": "#e8eef5",
+                                "size": 14,
+                                "face": "JetBrains Mono, monospace"
+                            }},
+                            "margin": 10,
+                            "padding": 5
+                        }},
+                        "edges": {{
+                            "color": {{
+                                "color": "#22304a",
+                                "highlight": "#6d8cff",
+                                "hover": "#6d8cff"
+                            }},
+                            "width": 1.5,
+                            "smooth": {{"enabled": true, "type": "dynamic"}},
+                            "font": {{
+                                "color": "#6b7488",
+                                "size": 11,
+                                "face": "JetBrains Mono, monospace"
+                            }},
+                            "arrows": {{"to": {{"enabled": true, "scaleFactor": 0.5, "type": "arrow"}}}},
+                            "arrowStrikethrough": false
+                        }},
+                        "interaction": {{
+                            "hover": true,
+                            "navigationButtons": true,
+                            "keyboard": true,
+                            "zoomView": true
+                        }}
+                    }};
+                    """)
 
                     # Add nodes
                     for node in nodes:
                         node_id = node.get("id", "Unknown")
                         label = node.get("label", "Unknown")
                         node_type = node.get("type", "Node")
-                        color = "#97C2FC" if node_type == "Entity" else "#FFFF00"
-                        net.add_node(node_id, label=label, title=f"{node_type}", color=color)
+
+                        # All nodes use accent blue (pyvis will apply on hover)
+                        net.add_node(node_id, label=label, title=f"{node_type}", color="#6d8cff")
 
                     # Add edges
                     for edge in edges:
                         src = edge.get("source", "Unknown")
                         tgt = edge.get("target", "Unknown")
                         label = edge.get("label", "link")
-                        net.add_edge(src, tgt, title=label, label=label)
+
+                        # Show or hide edge labels based on toggle
+                        edge_label = label if show_edge_labels else ""
+                        net.add_edge(src, tgt, title=label, label=edge_label)
 
                     net.save_graph("graph.html")
                     with open("graph.html", "r", encoding="utf-8") as f:
                         html_content = f.read()
-                    components.html(html_content, height=520)
-                    st.caption(f"✓ Displayed {net.num_nodes} nodes, {len(edges)} edges")
+
+                    components.html(html_content, height=620)
+
+                    # Display stats
+                    st.caption(f"✓ Graph: {net.num_nodes} nodes, {len(edges)} relationships | Node spacing: {node_spacing:.1f}x | Labels: {'shown' if show_edge_labels else 'hidden'}")
             else:
                 st.error(f"❌ Failed to fetch graph data: {res.text}")
 
