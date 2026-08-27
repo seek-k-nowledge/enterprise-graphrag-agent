@@ -76,22 +76,10 @@ class StructuredOutputFallover(Runnable):
             logger.debug("Structured output call served by: primary")
             return result
         except Exception as e:
-            if "list_type" in str(e) or "stringified" in str(e).lower():
-                logger.info(f"Detected stringified field issue: {e}. Retrying with deserialization...")
-                try:
-                    raw_dict = self.primary_runnable.invoke(input, config)
-                    if isinstance(raw_dict, dict):
-                        fixed_dict = _deserialize_stringified_lists(raw_dict)
-                        logger.info("Primary structured output recovered after field deserialization")
-                        self.llm_wrapper.last_provider = "primary"
-                        return fixed_dict
-                except Exception as e2:
-                    logger.warning(f"Deserialization failed: {e2}. Falling back to fallback model")
-            else:
-                logger.warning(
-                    f"Primary structured output failed: {e}. "
-                    f"Falling back to fallback model"
-                )
+            logger.warning(
+                f"Primary structured output failed: {e}. "
+                f"Falling back to fallback model"
+            )
             result = self.fallback_runnable.invoke(input, config)
             self.llm_wrapper.last_provider = "fallback"
             logger.warning("Structured output call served by: fallback (fallover)")
@@ -297,8 +285,9 @@ def get_llm(
             logger.info(f"Using Anthropic provider for {model}")
 
             # Add Groq fallback in case of rate limits (429) or other failures
+            # Use a standard Groq model (not the Anthropic model name)
             try:
-                fallback = _create_groq_client(model, temperature, None)
+                fallback = _create_groq_client("openai/gpt-oss-120b", temperature, None)
                 llm = FalloverLLM(primary, fallback, model, temperature)
                 logger.info("Anthropic + Groq fallback enabled (for rate limit handling)")
                 return llm
