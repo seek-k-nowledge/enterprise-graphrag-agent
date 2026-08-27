@@ -49,6 +49,314 @@ DEFAULT_FRIENDLY_MESSAGE = {
 }
 
 st.set_page_config(page_title="Enterprise GraphRAG", page_icon="🕸️", layout="wide")
+
+# Dark data-graph theme CSS
+DARK_THEME_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Root color variables */
+:root {
+    --bg-dark: #0a0e17;
+    --bg-card: #0f1524;
+    --accent-blue: #6d8cff;
+    --border-color: #22304a;
+    --text-muted: #6b7488;
+}
+
+/* Overall theme */
+.stApp {
+    background-color: var(--bg-dark);
+}
+
+/* Main container */
+[data-testid="stAppViewContainer"] {
+    background-color: var(--bg-dark);
+    color: #e8eef5;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: var(--bg-dark);
+    border-right: 1px solid var(--border-color);
+}
+
+[data-testid="stSidebar"] [data-testid="stVerticalBlockContainer"] {
+    background-color: var(--bg-dark);
+}
+
+/* Cards and containers with left border accent */
+.status-card {
+    background-color: var(--bg-card);
+    border-left: 4px solid var(--accent-blue);
+    border-radius: 0 8px 8px 0;
+    padding: 16px;
+    margin: 8px 0;
+    border-top: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.status-card:hover {
+    background-color: #151f30;
+    border-left-color: #8aa4ff;
+    box-shadow: 0 4px 12px rgba(109, 140, 255, 0.1);
+}
+
+.status-card.success {
+    border-left-color: #10b981;
+}
+
+.status-card.success:hover {
+    border-left-color: #34d399;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+}
+
+.status-card.warning {
+    border-left-color: #f59e0b;
+}
+
+.status-card.warning:hover {
+    border-left-color: #fbbf24;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+}
+
+.status-card.info {
+    border-left-color: var(--accent-blue);
+}
+
+.status-card.info:hover {
+    border-left-color: #8aa4ff;
+    box-shadow: 0 4px 12px rgba(109, 140, 255, 0.1);
+}
+
+/* Buttons */
+.stButton > button {
+    background-color: var(--accent-blue);
+    color: #0a0e17;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.stButton > button:hover {
+    background-color: #8aa4ff;
+    box-shadow: 0 4px 12px rgba(109, 140, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.stButton > button:active {
+    transform: translateY(0);
+}
+
+/* Secondary buttons (less prominent) */
+.stButton > button[data-testid="baseButton-secondary"] {
+    background-color: var(--bg-card);
+    color: var(--accent-blue);
+    border: 1px solid var(--accent-blue);
+}
+
+.stButton > button[data-testid="baseButton-secondary"]:hover {
+    background-color: rgba(109, 140, 255, 0.1);
+    border-color: #8aa4ff;
+}
+
+/* Monospace font for technical details */
+.tech-id, .doc-id, .chunk-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent-blue);
+    background-color: rgba(109, 140, 255, 0.08);
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.3px;
+}
+
+/* Code blocks */
+.stCodeBlock {
+    background-color: #080c13 !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 6px !important;
+}
+
+pre {
+    background-color: #080c13 !important;
+    color: #a1afc3 !important;
+}
+
+code {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-blue);
+    background-color: rgba(109, 140, 255, 0.08);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+/* Expanders */
+.streamlit-expanderHeader {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: #e8eef5;
+    font-weight: 500;
+}
+
+.streamlit-expanderHeader:hover {
+    background-color: rgba(109, 140, 255, 0.05);
+    border-color: var(--accent-blue);
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] button {
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+}
+
+.stTabs [data-baseweb="tab-list"] button:hover {
+    color: #a1afc3;
+}
+
+/* Text input & select boxes */
+.stTextInput > div > div > input,
+.stSelectbox > div > div > select,
+.stTextArea > div > div > textarea {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    color: #e8eef5 !important;
+    border-radius: 6px !important;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.stTextInput > div > div > input:focus,
+.stSelectbox > div > div > select:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 0 2px rgba(109, 140, 255, 0.2) !important;
+}
+
+/* Messages and alerts */
+.stAlert {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.stSuccess {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    border-left: 4px solid #10b981 !important;
+    color: #d1fae5 !important;
+}
+
+.stError {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    border-left: 4px solid #ef4444 !important;
+    color: #fee2e2 !important;
+}
+
+.stWarning {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    border-left: 4px solid #f59e0b !important;
+    color: #fef3c7 !important;
+}
+
+.stInfo {
+    background-color: rgba(109, 140, 255, 0.1) !important;
+    border-left: 4px solid var(--accent-blue) !important;
+    color: #dbeafe !important;
+}
+
+/* Progress indicators */
+.stProgress > div > div > div {
+    background-color: var(--accent-blue);
+}
+
+/* Spinner */
+.stSpinner {
+    color: var(--accent-blue);
+}
+
+/* Divider */
+hr {
+    background-color: var(--border-color);
+    border: none;
+    height: 1px;
+}
+
+/* Fade-in animation for ingestion progress messages */
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ingestion-progress {
+    animation: fadeInSlide 0.4s ease-out forwards;
+}
+
+.ingestion-progress:nth-child(1) { animation-delay: 0s; }
+.ingestion-progress:nth-child(2) { animation-delay: 0.1s; }
+.ingestion-progress:nth-child(3) { animation-delay: 0.2s; }
+.ingestion-progress:nth-child(4) { animation-delay: 0.3s; }
+.ingestion-progress:nth-child(5) { animation-delay: 0.4s; }
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    color: #e8eef5;
+}
+
+h1 {
+    border-bottom: 2px solid var(--accent-blue);
+    padding-bottom: 8px;
+}
+
+/* Links */
+a {
+    color: var(--accent-blue);
+    text-decoration: none;
+}
+
+a:hover {
+    color: #8aa4ff;
+    text-decoration: underline;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-blue);
+}
+</style>
+"""
+
+st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 st.title("🕸️ Enterprise GraphRAG Assistant")
 
 # Lightweight provider validation (just confirm API key works, don't run full pipeline)
@@ -157,8 +465,11 @@ with st.sidebar:
         )
 
         if uploaded_file is not None:
-            st.write(f"**File:** {uploaded_file.name}")
-            st.write(f"**Size:** {uploaded_file.size / 1024:.2f} KB")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**File:** <code class='tech-id'>{uploaded_file.name}</code>", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"**Size:** {uploaded_file.size / 1024:.2f} KB", unsafe_allow_html=True)
 
             if st.button("Process & Ingest PDF", key="ingest_pdf_btn"):
                 with st.spinner("Processing document..."):
@@ -189,7 +500,10 @@ with st.sidebar:
                                 length_function=len
                             )
                             chunks = splitter.split_text(text)
-                            st.info(f"📦 Created {len(chunks)} chunks")
+                            st.markdown(
+                                f'<div class="ingestion-progress" style="background-color: rgba(109, 140, 255, 0.1); border-left-color: var(--accent-blue); padding: 12px; border-radius: 0 6px 6px 0; margin: 8px 0;"><strong>📦 Created <code class="tech-id">{len(chunks)}</code> chunks</strong></div>',
+                                unsafe_allow_html=True
+                            )
 
                             # Ingest all chunks
                             ingested = 0
@@ -235,9 +549,16 @@ with st.sidebar:
                                 if i < len(chunks) - 1:
                                     time.sleep(8)
 
-                            st.success(f"✅ Ingestion complete: {ingested} chunks processed")
+                            # Render completion message with fade-in animation
+                            st.markdown(
+                                f'<div class="ingestion-progress"><strong>✅ Ingestion complete</strong><br>Processed {ingested} chunks with {len(chunk_errors)} quality checks</div>',
+                                unsafe_allow_html=True
+                            )
                             if failed > 0:
-                                st.warning(f"⚠️ {failed} chunks failed")
+                                st.markdown(
+                                    f'<div class="ingestion-progress" style="animation-delay: 0.1s;"><strong>⚠️ {failed} chunks failed</strong></div>',
+                                    unsafe_allow_html=True
+                                )
                             if chunk_errors:
                                 with st.expander(f"ℹ️ {len(chunk_errors)} details were double-checked and skipped for accuracy"):
                                     st.info(
@@ -247,14 +568,33 @@ with st.sidebar:
                                     for i, error in enumerate(chunk_errors):
                                         stage = error.get("stage", "unknown")
                                         friendly = FRIENDLY_ERROR_MESSAGES.get(stage, DEFAULT_FRIENDLY_MESSAGE)
+                                        chunk_id = error.get('chunk_id', 'chunk')
 
-                                        with st.expander(f"{friendly['title']} — {error.get('chunk_id', 'chunk')}", expanded=False):
-                                            st.markdown(friendly["explanation"])
-                                            with st.expander("🔧 Show technical details", expanded=False):
-                                                st.caption(f"**Type:** {stage}")
-                                                st.caption(f"**Message:** {error.get('message', 'N/A')}")
-                                                if error.get("payload"):
-                                                    st.code(error['payload'], language="text")
+                                        # Determine status card color based on error type
+                                        card_class = "status-card info"
+                                        if stage == "surface_form_check":
+                                            card_class = "status-card warning"
+                                        elif stage == "evidence_check":
+                                            card_class = "status-card warning"
+                                        elif stage == "relation_resolution":
+                                            card_class = "status-card info"
+
+                                        # Render styled status card
+                                        st.markdown(
+                                            f'<div class="{card_class}"><strong>{friendly["title"]}</strong> — <code class="chunk-id">{chunk_id}</code></div>',
+                                            unsafe_allow_html=True
+                                        )
+                                        st.markdown(friendly["explanation"], unsafe_allow_html=True)
+
+                                        with st.expander("🔧 Show technical details"):
+                                            col1, col2 = st.columns(2)
+                                            with col1:
+                                                st.caption(f"**Type:** `{stage}`")
+                                            with col2:
+                                                st.caption(f"**Error ID:** <code class='tech-id'>{error.get('chunk_id', 'N/A')}</code>", unsafe_allow_html=True)
+                                            st.caption(f"**Message:** {error.get('message', 'N/A')}")
+                                            if error.get("payload"):
+                                                st.code(error['payload'], language="text")
 
                     except Exception as e:
                         st.error(f"❌ Processing failed: {e}")
