@@ -6,6 +6,7 @@ import streamlit.components.v1 as components
 import io
 import os
 import time
+import json
 
 # Friendly explanations for extraction quality checks
 FRIENDLY_ERROR_MESSAGES = {
@@ -829,9 +830,12 @@ with tab2:
                         "solver": "barnesHut",
                     }
 
+                    # Serialize physics config to valid JSON (not Python dict syntax)
+                    physics_json = json.dumps(physics_config)
+
                     net.set_options(f"""
                     var options = {{
-                        "physics": {physics_config},
+                        "physics": {physics_json},
                         "nodes": {{
                             "color": {{
                                 "background": "#6d8cff",
