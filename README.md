@@ -8,6 +8,8 @@ This is a portfolio project built to explore self-grounding RAG architecture end
 
 Most RAG systems blindly trust LLM output. This one checks its work: every extracted entity and relationship is validated against the source document before being written to the graph. If a claim can't be verified word-for-word against the source, it's skipped — not silently, but with a friendly explanation shown to the user.
 
+![Chat interface showing a cited, grounded answer with an expanded reference.](docs/images/chatinterface.png)
+
 ## Key Features
 
 - 📄 Document ingestion with automatic semantic chunking
@@ -65,6 +67,8 @@ When a document is ingested:
 
 This prevents hallucinations from polluting your knowledge graph.
 
+![Interactive graph viewer showing entities, relationships, and a hover tooltip.](docs/images/graphviewernodes.png)
+
 ## Notable bugs found and fixed along the way
 
 **Neo4j silent-commit catastrophe** — The graph writer reported "SUCCESS" in logs but queries showed zero nodes in Neo4j. The culprit: `session.run()` closes the session immediately, leaving pending write transactions to fail after it exits. Discovered by querying Neo4j directly instead of trusting the logs. Fixed by using `write_transaction()`, which guarantees the transaction commits before returning. This means all the extraction work was happening correctly, but nothing was actually persisting.
@@ -83,12 +87,10 @@ All of these were invisible failures—logs said "success," the UI showed green 
 
 Create a `.env` file in the project root with your API keys (see `.env.example`):
 
-```
-ANTHROPIC_API_KEY=sk-ant-...
-GROQ_API_KEY=gsk-...
-CEREBRAS_API_KEY=csk-...
-NEO4J_PASSWORD=your-secure-password
-```
+    ANTHROPIC_API_KEY=sk-ant-...
+    GROQ_API_KEY=gsk-...
+    CEREBRAS_API_KEY=csk-...
+    NEO4J_PASSWORD=your-secure-password
 
 The UI's LLM Settings panel allows per-request provider/key overrides without restarting.
 
