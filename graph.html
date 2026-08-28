@@ -1,0 +1,155 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 500px;
+                 background-color: #222222;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#97C2FC", "font": {"color": "white"}, "id": "ML4PS @ NeurIPS 2026", "label": "ML4PS @ NeurIPS 2026", "shape": "dot", "title": "Entity"}, {"color": "#FFFF00", "font": {"color": "white"}, "id": "doc_9f8d8f9215c86987", "label": "doc_9f8d8f9215c86987", "shape": "dot", "title": "Chunk"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "ML4PS", "label": "ML4PS", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Mashantucket Pequot Nation", "label": "Mashantucket Pequot Nation", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Kaggle", "label": "Kaggle", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "NeurIPS 2026", "label": "NeurIPS 2026", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Transformer", "label": "Transformer", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Kuramoto-Sivashinsky PDE", "label": "Kuramoto-Sivashinsky PDE", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Paul E. Harris IV", "label": "Paul E. Harris IV", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "SynechismCore", "label": "SynechismCore", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "v23 architecture", "label": "v23 architecture", "shape": "dot", "title": "Entity"}, {"color": "#FFFF00", "font": {"color": "white"}, "id": "doc_22934d9c97e9bb1b", "label": "doc_22934d9c97e9bb1b", "shape": "dot", "title": "Chunk"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Weather L96", "label": "Weather L96", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Robotics", "label": "Robotics", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Lorenz-63", "label": "Lorenz-63", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "H100 benchmark", "label": "H100 benchmark", "shape": "dot", "title": "Entity"}, {"color": "#FFFF00", "font": {"color": "white"}, "id": "doc_ca19925959c20115", "label": "doc_ca19925959c20115", "shape": "dot", "title": "Chunk"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "LaminarBypass", "label": "LaminarBypass", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "IrrationalShutter", "label": "IrrationalShutter", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "ElasticManifold", "label": "ElasticManifold", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "L96", "label": "L96", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "nn.Module", "label": "nn.Module", "shape": "dot", "title": "Entity"}, {"color": "#FFFF00", "font": {"color": "white"}, "id": "doc_1bc4c50b3318743c", "label": "doc_1bc4c50b3318743c", "shape": "dot", "title": "Chunk"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "StiffnessDetector", "label": "StiffnessDetector", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "SynechismCore_v23_FRESH_patched.zip", "label": "SynechismCore_v23_FRESH_patched.zip", "shape": "dot", "title": "Entity"}, {"color": "#FFFF00", "font": {"color": "white"}, "id": "doc_b1e4182fa1400032", "label": "doc_b1e4182fa1400032", "shape": "dot", "title": "Chunk"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Weyl sequence", "label": "Weyl sequence", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "PyTorch", "label": "PyTorch", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "GELU", "label": "GELU", "shape": "dot", "title": "Entity"}, {"color": "#FFFF00", "font": {"color": "white"}, "id": "doc_4c517d9ce6c85927", "label": "doc_4c517d9ce6c85927", "shape": "dot", "title": "Chunk"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Tanh", "label": "Tanh", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "delta_r_net", "label": "delta_r_net", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "ElasticAttractorODE", "label": "ElasticAttractorODE", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Hopper architecture", "label": "Hopper architecture", "shape": "dot", "title": "Entity"}, {"color": "#FFFF00", "font": {"color": "white"}, "id": "doc_1332df212d8d3c4d", "label": "doc_1332df212d8d3c4d", "shape": "dot", "title": "Chunk"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "launch_h100.py", "label": "launch_h100.py", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "TF32", "label": "TF32", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "A100", "label": "A100", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "H100", "label": "H100", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "run_v23_benchmark.py", "label": "run_v23_benchmark.py", "shape": "dot", "title": "Entity"}, {"color": "#FFFF00", "font": {"color": "white"}, "id": "doc_105af64c8cbfcc9c", "label": "doc_105af64c8cbfcc9c", "shape": "dot", "title": "Chunk"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "src/v23_components.py", "label": "src/v23_components.py", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "Neural Ordinary Differential Equations", "label": "Neural Ordinary Differential Equations", "shape": "dot", "title": "Entity"}, {"color": "#FFFF00", "font": {"color": "white"}, "id": "doc_d80c8dfae73b8e3a", "label": "doc_d80c8dfae73b8e3a", "shape": "dot", "title": "Chunk"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "4:8b082c0d-f572-42e7-9455-419a24d49b87:117", "label": "Robotics", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "4:8b082c0d-f572-42e7-9455-419a24d49b87:119", "label": "attractor-stabilized ODE architectures", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "4:8b082c0d-f572-42e7-9455-419a24d49b87:124", "label": "v22", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "4:8b082c0d-f572-42e7-9455-419a24d49b87:142", "label": "Coherence Rollout", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "4:8b082c0d-f572-42e7-9455-419a24d49b87:143", "label": "25,000-step autoregressive coherence test", "shape": "dot", "title": "Entity"}, {"color": "#97C2FC", "font": {"color": "white"}, "id": "4:8b082c0d-f572-42e7-9455-419a24d49b87:156", "label": "Hopf bifurcation", "shape": "dot", "title": "Entity"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": "ML4PS @ NeurIPS 2026", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "ML4PS", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "Mashantucket Pequot Nation", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "Kaggle", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "NeurIPS 2026", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "Transformer", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "Kuramoto-Sivashinsky PDE", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "Mashantucket Pequot Nation", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "Paul E. Harris IV", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "SynechismCore", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_9f8d8f9215c86987"}, {"arrows": "to", "from": "v23 architecture", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_22934d9c97e9bb1b"}, {"arrows": "to", "from": "Weather L96", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_22934d9c97e9bb1b"}, {"arrows": "to", "from": "Robotics", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_22934d9c97e9bb1b"}, {"arrows": "to", "from": "Lorenz-63", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_22934d9c97e9bb1b"}, {"arrows": "to", "from": "Kuramoto-Sivashinsky PDE", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_22934d9c97e9bb1b"}, {"arrows": "to", "from": "Transformer", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_22934d9c97e9bb1b"}, {"arrows": "to", "from": "H100 benchmark", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_ca19925959c20115"}, {"arrows": "to", "from": "LaminarBypass", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_ca19925959c20115"}, {"arrows": "to", "from": "IrrationalShutter", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_ca19925959c20115"}, {"arrows": "to", "from": "ElasticManifold", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_ca19925959c20115"}, {"arrows": "to", "from": "v23 architecture", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_ca19925959c20115"}, {"arrows": "to", "from": "L96", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_ca19925959c20115"}, {"arrows": "to", "from": "nn.Module", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1bc4c50b3318743c"}, {"arrows": "to", "from": "StiffnessDetector", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1bc4c50b3318743c"}, {"arrows": "to", "from": "SynechismCore_v23_FRESH_patched.zip", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1bc4c50b3318743c"}, {"arrows": "to", "from": "LaminarBypass", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_b1e4182fa1400032"}, {"arrows": "to", "from": "Weyl sequence", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_b1e4182fa1400032"}, {"arrows": "to", "from": "IrrationalShutter", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_b1e4182fa1400032"}, {"arrows": "to", "from": "PyTorch", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_b1e4182fa1400032"}, {"arrows": "to", "from": "GELU", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_4c517d9ce6c85927"}, {"arrows": "to", "from": "Tanh", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_4c517d9ce6c85927"}, {"arrows": "to", "from": "delta_r_net", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_4c517d9ce6c85927"}, {"arrows": "to", "from": "ElasticAttractorODE", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_4c517d9ce6c85927"}, {"arrows": "to", "from": "ElasticManifold", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_4c517d9ce6c85927"}, {"arrows": "to", "from": "Hopper architecture", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1332df212d8d3c4d"}, {"arrows": "to", "from": "launch_h100.py", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1332df212d8d3c4d"}, {"arrows": "to", "from": "TF32", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1332df212d8d3c4d"}, {"arrows": "to", "from": "PyTorch", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1332df212d8d3c4d"}, {"arrows": "to", "from": "A100", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1332df212d8d3c4d"}, {"arrows": "to", "from": "H100", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1332df212d8d3c4d"}, {"arrows": "to", "from": "GELU", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_1332df212d8d3c4d"}, {"arrows": "to", "from": "run_v23_benchmark.py", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_105af64c8cbfcc9c"}, {"arrows": "to", "from": "launch_h100.py", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_105af64c8cbfcc9c"}, {"arrows": "to", "from": "IrrationalShutter", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_105af64c8cbfcc9c"}, {"arrows": "to", "from": "ElasticAttractorODE", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_105af64c8cbfcc9c"}, {"arrows": "to", "from": "LaminarBypass", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_105af64c8cbfcc9c"}, {"arrows": "to", "from": "StiffnessDetector", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_105af64c8cbfcc9c"}, {"arrows": "to", "from": "src/v23_components.py", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_105af64c8cbfcc9c"}, {"arrows": "to", "from": "PyTorch", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_105af64c8cbfcc9c"}, {"arrows": "to", "from": "Neural Ordinary Differential Equations", "label": "MENTIONED_IN", "title": "MENTIONED_IN", "to": "doc_d80c8dfae73b8e3a"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>

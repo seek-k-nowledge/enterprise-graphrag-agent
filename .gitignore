@@ -2,3 +2,7 @@ venv/
 .env
 __pycache__/
 *.log
+*_run.txt
+*test*.py
+query_neo4j.py
+check_*.py
