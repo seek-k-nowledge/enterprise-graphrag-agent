@@ -1,4 +1,4 @@
-
+# Enterprise GraphRAG
 
 A self-hosted, provider-agnostic knowledge graph pipeline that extracts entities and relationships from documents, validates every claim against source text before writing it to the graph, and answers questions with cited, grounded responses.
 
