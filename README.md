@@ -1,5 +1,7 @@
 # GraphRAG Agent
 
+> **Status:** Working prototype (v0.x), actively developed toward production. Roadmap: authentication, security hardening, claim typing, load testing.
+
 A self-hosted, provider-agnostic knowledge graph pipeline that extracts entities and relationships from documents, validates every claim against source text before writing it to the graph, and answers questions with cited, grounded responses.
 
 This is a portfolio project built to explore self-grounding RAG architecture end-to-end: document ingestion, LLM-based extraction, graph indexing, multi-provider LLM failover, and a chat interface with verifiable citations. It's a working local prototype — see [Scope & Limitations](#scope--limitations) below for what's in and out.
@@ -28,7 +30,7 @@ This is a working local prototype, not a production deployment:
 - Tested single-user, not under concurrent load
 - No staging/cloud deployment configured
 
-These are natural next steps if this project were taken further.
+**Roadmap toward production:** authentication, security hardening, claim typing, and load testing.
 
 ## Quick start
 
