@@ -1,5 +1,5 @@
 """
-LangGraph agent swarm for Stage 3: query routing, retrieval, synthesis, verification.
+LangGraph multi-agent pipeline for Stage 3: query routing, retrieval, synthesis, verification.
 
 Agents:
 - RouterAgent: Query classification and strategy selection (LLM-based)

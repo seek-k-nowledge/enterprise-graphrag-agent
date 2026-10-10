@@ -1,8 +1,8 @@
 @echo off
-REM Start Enterprise GraphRAG application with Docker Compose
+REM Start GraphRAG Agent application with Docker Compose
 REM Double-click this file to start Neo4j, FastAPI backend, and Streamlit UI
 
-echo Starting Enterprise GraphRAG...
+echo Starting GraphRAG Agent...
 echo.
 
 REM Check if Docker is installed

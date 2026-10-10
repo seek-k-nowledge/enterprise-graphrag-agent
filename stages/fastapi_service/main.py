@@ -234,7 +234,7 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
 
     app = FastAPI(
-        title="Enterprise GraphRAG",
+        title="GraphRAG Agent",
         description="Multi-agent GraphRAG engine with Neo4j and LangGraph",
         version="1.0.0",
         lifespan=lifespan,
@@ -269,7 +269,7 @@ def create_app() -> FastAPI:
     @app.post("/api/v1/query", response_model=QueryResponse)
     async def query(request: Request, query_req: QueryRequest) -> QueryResponse:
         """
-        Answer a user query using the agent swarm.
+        Answer a user query using the multi-agent pipeline.
 
         Returns a grounded answer with citations and reasoning trace.
         """

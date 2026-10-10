@@ -1,6 +1,6 @@
 # CONTEXT.md — 4-Stage GraphRAG Pipeline Router
 
-This document is the architectural contract for the Enterprise GraphRAG & Multi-Agent Swarm Engine. It describes the four pipeline stages, the boundary each one owns, and how a request is routed across them.
+This document is the architectural contract for the GraphRAG Agent. It describes the four pipeline stages, the boundary each one owns, and how a request is routed across them.
 
 Stages live in `stages/`, in execution order (Stage 01 → 04 below). Shared configuration lives in `_config/`. Every stage is intended to be independently runnable and independently testable — a stage communicates with its neighbors through a declared payload, never by reaching into another stage's internals.
 
@@ -28,7 +28,7 @@ Stages live in `stages/`, in execution order (Stage 01 → 04 below). Shared con
    user query ─────────────▶┌─────────────────────────────┐
                             │ reasoning_agent             │
                             │ route · retrieve (graph +   │
-                            │ vector) · multi-agent swarm │
+                            │ vector) · agent pipeline    │
                             └──────────────┬──────────────┘
                                            │ AnswerPayload
                                            ▼
@@ -78,12 +78,12 @@ Responsibilities:
 
 ## Stage 03 — `stages/reasoning_agent/`
 
-**Owns:** the router, retrieval strategy, and the multi-agent swarm. This is the stage the project's name is really about.
+**Owns:** the router, retrieval strategy, and the multi-agent pipeline. This is the stage the project's name is really about.
 
 Responsibilities:
 - **Route** the incoming query to a retrieval strategy: graph traversal for multi-hop and relational questions, vector search for semantic/descriptive ones, hybrid for most real queries, and direct Cypher for aggregate/structural ones.
 - Execute retrieval read-only against the stage 02 graph.
-- Orchestrate the agent swarm with LangGraph — specialist agents (retrieval, Cypher authoring, synthesis, verification) coordinated as a stateful graph with checkpointing, so long reasoning runs are resumable and inspectable.
+- Orchestrate the multi-agent pipeline with LangGraph — specialist agents (retrieval, Cypher authoring, synthesis, verification) coordinated as a stateful graph with checkpointing, so long reasoning runs are resumable and inspectable.
 - Ground the answer: every claim carries the node, edge, or chunk it came from.
 
 **Outputs** an `AnswerPayload`: the answer text, the citation set, the retrieval trace (strategy chosen, subgraph touched), and token/latency accounting.

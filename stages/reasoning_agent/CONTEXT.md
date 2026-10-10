@@ -6,9 +6,9 @@
 
 ## Mandate
 
-Accept a user query, retrieve relevant knowledge from the Stage 2 graph, and synthesize a grounded answer using a multi-agent swarm. Every claim in the answer must carry citations to the graph nodes, edges, or chunks that support it.
+Accept a user query, retrieve relevant knowledge from the Stage 2 graph, and synthesize a grounded answer using a multi-agent pipeline. Every claim in the answer must carry citations to the graph nodes, edges, or chunks that support it.
 
-**This stage owns:** query routing, retrieval orchestration, LangGraph-based agent swarm, answer grounding, and citation tracking.
+**This stage owns:** query routing, retrieval orchestration, LangGraph-based multi-agent pipeline, answer grounding, and citation tracking.
 
 **This stage does not own:** Neo4j writes, entity resolution, embedding, or HTTP handling. It is read-only with respect to the graph. If reasoning discovers a gap or error in the graph, it reports it; correction requires re-ingestion (stages 01–02).
 
@@ -180,7 +180,7 @@ RETURN c.canonical_name, l.canonical_name ORDER BY count(*) DESC LIMIT 10
 
 ---
 
-## LangGraph Agent Swarm
+## LangGraph Multi-Agent Pipeline
 
 ### Architecture
 
@@ -375,7 +375,7 @@ stages/reasoning_agent/
 │   ├── graph_traversal.py  multi-hop Cypher-based retrieval
 │   ├── vector_search.py    semantic vector search
 │   └── cypher_direct.py    structural/aggregate queries
-├── agents/                 LangGraph-based agent swarm
+├── agents/                 LangGraph-based multi-agent pipeline
 │   ├── __init__.py
 │   ├── router_agent.py     query classification
 │   ├── retrieval_agent.py  multi-hop traversal orchestration

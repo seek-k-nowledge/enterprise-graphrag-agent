@@ -297,7 +297,7 @@ class FastAPIConfig(BaseModel):
     port: int = Field(default=8000, ge=1, le=65535)
     workers: int = Field(default=4, ge=1, le=32)
     log_level: str = Field(default="INFO")
-    title: str = Field(default="Enterprise GraphRAG")
+    title: str = Field(default="GraphRAG Agent")
     version: str = Field(default="1.0.0")
 
 

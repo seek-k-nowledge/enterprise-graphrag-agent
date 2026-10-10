@@ -22,7 +22,7 @@ class RetrievalAgent:
     """
     Orchestrates retrieval strategies and aggregates results.
 
-    Executes selected strategies in sequence or parallel, merges results,
+    Executes selected strategies in sequence, merges results,
     and ranks by confidence.
     """
 

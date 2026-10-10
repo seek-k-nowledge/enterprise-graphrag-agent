@@ -49,7 +49,7 @@ DEFAULT_FRIENDLY_MESSAGE = {
     ),
 }
 
-st.set_page_config(page_title="Enterprise GraphRAG", page_icon="🕸️", layout="wide")
+st.set_page_config(page_title="GraphRAG Agent", page_icon="🕸️", layout="wide")
 
 # Dark data-graph theme CSS
 DARK_THEME_CSS = """
@@ -409,7 +409,7 @@ a:hover {
 """
 
 st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
-st.title("🕸️ Enterprise GraphRAG Assistant")
+st.title("🕸️ GraphRAG Agent")
 
 # Lightweight provider validation (just confirm API key works, don't run full pipeline)
 def validate_provider_key(provider: str, api_key: str) -> tuple[bool, str]:

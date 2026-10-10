@@ -74,7 +74,7 @@ def answer_query(
     api_key: Optional[str] = None,
 ) -> AnswerPayload:
     """
-    Answer a user query using the agent swarm.
+    Answer a user query using the multi-agent pipeline.
 
     This is the main entry point for Stage 3. Orchestrates:
     1. Query routing (classify intent, select strategies)
@@ -117,7 +117,7 @@ def answer_query(
             enable_checkpointing=config.enable_checkpointing,
         )
 
-        # Execute agent swarm
+        # Execute multi-agent pipeline
         answer = agent_graph.execute(
             query_payload=query_payload,
             session_id=query_payload.session_id,

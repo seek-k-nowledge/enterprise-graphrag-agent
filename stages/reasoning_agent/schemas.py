@@ -287,7 +287,7 @@ class AnswerPayload(BaseModel):
 
 
 class AgentState(BaseModel):
-    """Shared state for LangGraph agent swarm."""
+    """Shared state for the LangGraph multi-agent pipeline."""
 
     query: QueryPayload = Field(..., description="Original user query")
     query_classification: Optional[str] = Field(

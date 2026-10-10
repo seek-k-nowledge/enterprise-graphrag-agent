@@ -1,5 +1,5 @@
 """
-LangGraph state machine orchestration for Stage 3 agent swarm.
+LangGraph state machine orchestration for the Stage 3 multi-agent pipeline.
 
 Coordinates agents (router, retrieval, synthesis, verification) through
 a stateful graph with checkpointing for long-running queries.

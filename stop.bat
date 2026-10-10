@@ -1,8 +1,8 @@
 @echo off
-REM Stop Enterprise GraphRAG application
+REM Stop GraphRAG Agent application
 REM Double-click this file to cleanly shut down all services
 
-echo Stopping Enterprise GraphRAG...
+echo Stopping GraphRAG Agent...
 echo.
 
 docker compose down
