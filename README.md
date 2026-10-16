@@ -106,3 +106,7 @@ The UI's LLM Settings panel allows per-request provider/key overrides without re
 ## Status
 
 Actively developed. Working MVP with all core features. See GitHub Issues for planned improvements.
+
+## License
+
+MIT. See [LICENSE](LICENSE). Built by Paul Edward Harris 4th ([GitHub](https://github.com/seek-k-nowledge)) with heavy AI assistance (Claude).
